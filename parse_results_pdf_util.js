@@ -7,6 +7,7 @@ import {
 const standardFontDataUrl = './node_modules/pdfjs-dist/standard_fonts/';
 
 let event_name //TODO: fix...
+let gender //TODO: fix...
 
 async function extractPDFText(pdfPath) {
     // Read PDF as a binary
@@ -31,6 +32,7 @@ async function extractPDFText(pdfPath) {
         strings_array = content.items.map(item => {
             const reversed_string = utils.reverse_string(item.str);
             if (reversed_string.includes("תואצות")) {
+                reversed_string.includes("בנים") ? gender = "male" : gender = "female";
                 event_name = utils.extract_event_name(item.str);
             }
             return reversed_string;
@@ -54,6 +56,7 @@ function parseResults(data_array) {
         if (i + 9 < data_array.length) {
             data.push({
                 event: event_name,
+                gender: gender,
                 score: data_array[i + 1],
                 time: data_array[i + 2],
                 club: data_array[i + 3],
