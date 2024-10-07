@@ -1,6 +1,7 @@
 import fs from 'fs';
 import minimist from 'minimist';
 import * as parse_pdf from './parse_results_pdf_util.js';
+import * as utils from './utils.js';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -85,7 +86,7 @@ function _construct_criteria() {
     const criteria = {};
     for (const filter of filters) {
         if (argv[filter]) {
-            criteria[filter] = parse_pdf.reverse_string(argv[filter]);
+            criteria[filter] = utils.reverse_string(argv[filter]);
         }
     }
     console.log(criteria);
