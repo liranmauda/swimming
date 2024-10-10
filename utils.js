@@ -10,7 +10,11 @@ let event_name;
 
 //TODO: Add more event names to the map
 const name_map = {
-    "מעורבאישי": "Individual medley"
+    "מעורבאישי": "Individual medley",
+    "חופשי": "Freestyle",
+    "גב": "Backstroke",
+    "חזה": "Breaststroke",
+    "פרפר": "Butterfly"
 }
 
 function _check_hebrew(text) {
@@ -21,6 +25,7 @@ function _check_hebrew(text) {
 // reverse_string will reverse the string but keep the number straight
 function reverse_string(line) {
 
+    line = String(line);
     // If this is a time return without reversing
     if (line.match(timeRegex)) return line;
 
@@ -53,9 +58,10 @@ function extract_event_name(line) {
 
     const parts = line.split("-");
     const event_name_pos = 0;
-    const hebrew_event_name = parts[event_name_pos].trim().replaceAll(' ', '-')
+    const hebrew_event_name = parts[event_name_pos].trim().replaceAll(' ', '-').replace(/[0-9-]+/g, '');
     const pool_length = parts[event_name_pos].split(" ");
-    event_name = name_map[hebrew_event_name.replace(/[0-9-]+/g, '')];
+
+    event_name = name_map[hebrew_event_name.replace(/[0-9-]+/g, '')] || hebrew_event_name;
     // The pool_length should always be first in the current structure
     event_name = event_name + " " + pool_length[0];
     return event_name;

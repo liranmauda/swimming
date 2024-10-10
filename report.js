@@ -1,6 +1,7 @@
 import fs from 'fs';
 import minimist from 'minimist';
 import * as parse_pdf from './parse_results_pdf_util.js';
+import * as parse_url from './results_url_util.js';
 import * as utils from './utils.js';
 
 const argv = minimist(process.argv.slice(2));
@@ -9,6 +10,7 @@ function usage() {
     console.log(`
     --help                  -   Show this help
     --pdf_path              -   The path for the pdf to parse
+    --url                   -   the competition url page
     --file_name             -   Input file name
     --output                -   The output file name
 
@@ -40,12 +42,24 @@ if (argv.pdf_path && argv.file_name) {
     process.exit(3);
 }
 
+if (argv.url && argv.file_name) {
+    console.warn("url and file_name cannot be set together");
+    process.exit(3);
+}
+
+if (argv.pdf_path && argv.url) {
+    console.warn("pdf_path and url cannot be set together");
+    process.exit(3);
+}
+
 const pdfPath = argv.pdf_path || "./";
+const url = argv.url;
 const output_file_name = argv.output || "swimming_results.json";
 const filename = argv.file_name || output_file_name;
 
 const filters = [
     "event",
+    "gender",
     "score",
     "time",
     "club",
@@ -59,10 +73,17 @@ const filters = [
 
 // _get_data will get the data from a PDF or from a file already created
 async function _get_data() {
-    let data;
+    let data = [];
     if (argv.pdf_path) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
-        data = parse_pdf.parseResults(data_array);
+        data = data.concat(parse_pdf.parseResults(data_array));
+    } else if (argv.url) {
+        const links = await parse_url.scrape_main_url_for_results_links(url);
+        for (const link of links) {
+            console.log("Scrapping:", link)
+            data = data.concat(await parse_url.fetch_and_parse_results(link));
+            // break; //For debug
+        }
     } else {
         const read_data = fs.readFileSync(filename, 'utf-8');
         data = JSON.parse(read_data)
