@@ -72,7 +72,7 @@ const filters = [
 ]
 
 // _get_data will get the data from a PDF or from a file already created
-async function _get_data() {
+async function _get_data(criteria) {
     let data = [];
     if (argv.pdf_path) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
@@ -81,7 +81,8 @@ async function _get_data() {
         const links = await parse_url.scrape_main_url_for_results_links(url);
         for (const link of links) {
             console.log("Scrapping:", link)
-            data = data.concat(await parse_url.fetch_and_parse_results(link));
+            const to_concat = await parse_url.fetch_and_parse_results(link, criteria)
+            data = to_concat !== undefined ? data.concat(to_concat) : data;
             // break; //For debug
         }
     } else {
@@ -123,8 +124,10 @@ function _filter_by_criteria(data, criteria) {
 
 
 async function main() {
-    let data = await _get_data();
+
     const criteria = _construct_criteria();
+
+    let data = await _get_data(criteria);
     if (Object.keys(criteria).length > 0) {
         data = _filter_by_criteria(data, criteria);
     }

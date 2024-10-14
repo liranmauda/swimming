@@ -34,9 +34,8 @@ async function scrape_main_url_for_results_links(url) {
 };
 
 //TODO: explain
-async function fetch_and_parse_results(url) {
+async function fetch_and_parse_results(url, criteria) {
     try {
-
         const {
             data
         } = await axios.get(url);
@@ -47,6 +46,9 @@ async function fetch_and_parse_results(url) {
         const event_info = cheerio_loaded_HTML('.disciplines-title h4').text().trim();
         let gender = event_info.split(" - ")[3];
         gender.includes("בנים") ? gender = "male" : gender = "female";
+        //The reason we pass event_info is for future use, if we would like to skip scrapping urls based on other criteria.
+        if (should_skip_based_on_criteria(event_info, criteria)) return;
+
         const event_name = utils.extract_event_name(event_info.split("\n")[1].trim());
 
         cheerio_loaded_HTML('table.res-table tbody tr').each((index, element) => {
@@ -88,6 +90,15 @@ async function fetch_and_parse_results(url) {
     } catch (error) {
         console.error('Error fetching or parsing results:', error);
     }
+}
+
+
+//return true if we should skip this url, currently only support gender
+function should_skip_based_on_criteria(event_info, criteria) {
+    let gender = event_info.split(" - ")[3];
+    gender.includes("בנים") ? gender = "male" : gender = "female";
+    if (criteria.gender === gender) return true;
+    return false;
 }
 
 export {
