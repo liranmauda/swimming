@@ -8,9 +8,32 @@ const url_prefix = 'https://loglig.com:2053'
 // The URL of the page
 const url = url_prefix + '/LeagueTable/AthleticsDisciplines/10358';
 
-// TODO explain...
+// scrap_main_url_for_main_result_url will get a url and check if it contains the 'https://loglig.com:2053' prefix
+// if it is not it will scrap the page and return the url that contains it. 
+// It will assume that the page has it and will not handle the errors for now.
+// for example:
+// https://www.isr.org.il/comp.asp?compID=1510 will return
+// https://loglig.com:2053/LeagueTable/AthleticsDisciplines/10358 
+async function scrap_main_url_for_main_result_url(url) {
+    if (url.includes(url_prefix)) return url;
+
+    // Fetch the webpage content
+    const {
+        data
+    } = await axios.get(url);
+
+    const cheerio_loaded_HTML = load(data);
+    const iframeSrc = cheerio_loaded_HTML('iframe').attr('src');
+
+    return iframeSrc;
+}
+
+// scrape_main_url_for_results_links will scrap the page and search for all the results links that contains 'https://loglig.com:2053'
 async function scrape_main_url_for_results_links(url) {
     try {
+
+        url = await scrap_main_url_for_main_result_url(url);
+
         // Fetch the webpage content
         const {
             data
