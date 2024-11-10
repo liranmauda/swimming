@@ -55,7 +55,7 @@ if (argv.pdf_path && argv.url) {
 const pdfPath = argv.pdf_path || "./";
 const url = argv.url;
 const output_file_name = argv.output || "swimming_results.json";
-const filename = argv.file_name || output_file_name;
+let filename = argv.file_name || output_file_name;
 
 const filters = [
     "event",
@@ -85,18 +85,27 @@ async function _get_data(criteria) {
             data = to_concat !== undefined ? data.concat(to_concat) : data;
             // break; //For debug
         }
-    } else {
+    } else if (argv.file_name) {
         const read_data = fs.readFileSync(filename, 'utf-8');
         data = JSON.parse(read_data)
+        Object.keys(criteria).every(key =>
+            filename = filename.replace(/\.json$/, "") + "-" + criteria[key].replaceAll(' ', '-') + ".json");
+    } else {
+        console.error("Data must be consumed from a file, pdf, or url");
+        usage();
+        process.exit(0);
     }
 
     return data;
 }
 
 async function _set_data_file(data) {
+    if (argv.file_name && filename === output_file_name) {
+        console.log("Skipping writing to the same file");
+    }
     try {
-        fs.writeFileSync(output_file_name, JSON.stringify(data, null, 2));
-        console.log('Data saved to', output_file_name);
+        fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+        console.log('Data saved to', filename);
     } catch (error) {
         console.error('Error processing PDF:', error);
     }
