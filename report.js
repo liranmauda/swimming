@@ -29,6 +29,8 @@ function usage() {
     --lane                  -   Report by lane
     --heat                  -   Report by heat
     --position              -   Report by position
+
+    --group                 -   Group by any of the filter fields (for example, event)
     `);
 }
 
@@ -140,8 +142,18 @@ async function main() {
     if (Object.keys(criteria).length > 0) {
         data = _filter_by_criteria(data, criteria);
     }
-    console.log(data);
-    await _set_data_file(data);
+    const base_file_name = filename;
+    if (argv.group) {
+        data = utils.group_by_field(data, argv.group);
+        for (const key of Object.keys(data)) {
+            console.log(key)
+            filename = base_file_name.replace(/\.json$/, "") + "-" + key.replaceAll(' ', '-') + ".json";
+            await _set_data_file(data[key]);
+        }
+    } else {
+        console.log(data);
+        await _set_data_file(data);
+    }
 }
 
 main();

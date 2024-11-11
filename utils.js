@@ -67,8 +67,26 @@ function extract_event_name(line) {
     return event_name;
 }
 
+function group_by_field(data, field) {
+    const grouped = data.reduce((result, item) => {
+        // Check if the field type already has an array in the result object
+        const field_type = item[field];
+        if (!result[field_type]) {
+            result[field_type] = [];
+        }
+        // Add the item to the array for this event type
+        result[field_type].push(item);
+
+        return result;
+    }, {});
+
+    return grouped;
+}
+
+
 export {
     name_map,
     reverse_string,
     extract_event_name,
+    group_by_field,
 };
