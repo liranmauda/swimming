@@ -1,3 +1,4 @@
+import fs from 'fs';
 import minimist from 'minimist';
 
 const numberRegex = /\d+/g; //regex numbers
@@ -83,10 +84,38 @@ function group_by_field(data, field) {
     return grouped;
 }
 
+function fix_files_structure(file_name) {
+    try {
+        const file_content = fs.readFileSync(file_name, 'utf8');
+
+        // Use a regular expression to find all arrays in the file
+        const array_matches = file_content.match(/\[.*?\]/gs); // Matches any arrays using greedy search
+        if (!array_matches) return;
+
+        const combined_array = array_matches.reduce((acc, array_string) => {
+            try {
+                const parsed_array = JSON.parse(array_string); // Parse each array
+                if (Array.isArray(parsed_array)) {
+                    acc.push(...parsed_array); // Combine arrays
+                } else {
+                    console.warn(`Skipped non-array content: ${array_string}`);
+                }
+            } catch (err) {
+                console.warn(`Failed to parse: ${array_string}`);
+            }
+            return acc;
+        }, []);
+
+        fs.writeFileSync(file_name, JSON.stringify(combined_array, null, 2), 'utf8');
+    } catch (err) {
+        console.error('Error processing the file:', err.message);
+    }
+}
 
 export {
     name_map,
     reverse_string,
     extract_event_name,
     group_by_field,
+    fix_files_structure,
 };

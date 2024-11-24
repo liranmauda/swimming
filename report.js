@@ -31,6 +31,7 @@ function usage() {
     --position              -   Report by position
 
     --group                 -   Group by any of the filter fields (for example, event)
+    --append                -   Will append to an existing file with the same name.
     `);
 }
 
@@ -58,6 +59,8 @@ const pdfPath = argv.pdf_path || "./";
 const url = argv.url;
 const output_file_name = argv.output || "swimming_results.json";
 let filename = argv.file_name || output_file_name;
+const append = Boolean(argv.append)
+console.log(append);
 
 const filters = [
     "event",
@@ -101,12 +104,19 @@ async function _get_data(criteria) {
     return data;
 }
 
-async function _set_data_file(data) {
+async function _set_data_file(data, append) {
     if (argv.file_name && filename === output_file_name) {
         console.log("Skipping writing to the same file");
     }
     try {
-        fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+        if (fs.existsSync(filename) && append) {
+            //naive way, it will create arrays one after the other without appending to the same array in the file.
+            fs.appendFileSync(filename, JSON.stringify(data, null, 2));
+            //This will fix the naive way above. not wise performance wise but doing the work. 
+            utils.fix_files_structure(filename);
+        } else {
+            fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+        }
         console.log('Data saved to', filename);
     } catch (error) {
         console.error('Error processing PDF:', error);
@@ -148,11 +158,11 @@ async function main() {
         for (const key of Object.keys(data)) {
             console.log(key)
             filename = base_file_name.replace(/\.json$/, "") + "-" + key.replaceAll(' ', '-') + ".json";
-            await _set_data_file(data[key]);
+            await _set_data_file(data[key], append);
         }
     } else {
         console.log(data);
-        await _set_data_file(data);
+        await _set_data_file(data, append);
     }
 }
 
