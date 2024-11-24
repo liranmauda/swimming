@@ -66,9 +66,9 @@ async function fetch_and_parse_results(url, criteria) {
         const cheerio_loaded_HTML = load(data);
 
         const results = [];
+        let gender;
         const event_info = cheerio_loaded_HTML('.disciplines-title h4').text().trim();
-        let gender = event_info.split(" - ")[3];
-        gender.includes("בנים") ? gender = "male" : gender = "female";
+        event_info.includes("בנים") ? gender = "male" : gender = "female";
         //The reason we pass event_info is for future use, if we would like to skip scrapping urls based on other criteria.
         if (should_skip_based_on_criteria(event_info, criteria)) return;
 
