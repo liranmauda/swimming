@@ -1,4 +1,5 @@
 import fs from 'fs';
+import moment from 'moment';
 import minimist from 'minimist';
 import * as parse_pdf from './parse_results_pdf_util.js';
 import * as parse_url from './results_url_util.js';
@@ -30,6 +31,9 @@ function usage() {
     --heat                  -   Report by heat
     --position              -   Report by position
 
+    --year                  -   Competition calender year (end of season)
+    --date                  -   last date in the year
+
     --group                 -   Group by any of the filter fields (for example, event)
     --append                -   Will append to an existing file with the same name.
     `);
@@ -56,11 +60,13 @@ if (argv.pdf_path && argv.url) {
 }
 
 const pdfPath = argv.pdf_path || "./";
-const url = argv.url;
 const output_file_name = argv.output || "swimming_results.json";
-let filename = argv.file_name || output_file_name;
 const append = Boolean(argv.append)
-console.log(append);
+const year = argv.year || "2025";
+const date = argv.date;
+
+let group = argv.group;
+let filename = argv.file_name || output_file_name;
 
 const filters = [
     "event",
@@ -83,7 +89,7 @@ async function _get_data(criteria) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
         data = data.concat(parse_pdf.parseResults(data_array));
     } else if (argv.url) {
-        const links = await parse_url.scrape_main_url_for_results_links(url);
+        const links = await parse_url.scrape_main_url_for_results_links(argv.url, year, date);
         for (const link of links) {
             console.log("Scrapping:", link)
             const to_concat = await parse_url.fetch_and_parse_results(link, criteria)
@@ -153,7 +159,7 @@ async function main() {
         data = _filter_by_criteria(data, criteria);
     }
     const base_file_name = filename;
-    if (argv.group) {
+    if (group) {
         data = utils.group_by_field(data, argv.group);
         for (const key of Object.keys(data)) {
             console.log(key)
