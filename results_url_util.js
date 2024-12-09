@@ -94,9 +94,7 @@ async function scrape_main_url_for_results_links(link, year, date) {
         const results_links = [];
         const url_array = await get_competition_urls(link, year, date);
         for (let url of url_array) {
-            console.log("LMLM", url);
             url = await scrap_main_url_for_main_result_url(url);
-            console.log("LMLM", url);
             if (url === undefined) continue;
             // Fetch the webpage content
             const {
@@ -104,17 +102,29 @@ async function scrape_main_url_for_results_links(link, year, date) {
             } = await axios.get(url);
 
             const cheerio_loaded_HTML = load(data);
-
-            // Find all "תוצאות" pages from the url
-            cheerio_loaded_HTML('a').each((index, element) => {
-                const linkText = cheerio_loaded_HTML(element).text().trim();
-                if (linkText.includes('תוצאות') && !linkText.includes('תוצאות מקצים')) {
-                    const pdfUrl = cheerio_loaded_HTML(element).attr('href');
-                    results_links.push(url_prefix + pdfUrl);
+            cheerio_loaded_HTML('tr').each((index, element) => {
+                const event_date = cheerio_loaded_HTML(element).find('td:nth-child(5)').text().trim();
+                const total_registrations = cheerio_loaded_HTML(element).find('#TotalRegistrations').text().trim();
+                const total_participants = cheerio_loaded_HTML(element).find('#TotalParticipants').text().trim();
+                let pdf_url;
+                // Find all "תוצאות" pages from the url
+                cheerio_loaded_HTML(element).find('a').each((index, element) => {
+                    const linkText = cheerio_loaded_HTML(element).text().trim();
+                    if (linkText.includes('תוצאות') && !linkText.includes('תוצאות מקצים')) {
+                        pdf_url = cheerio_loaded_HTML(element).attr('href');
+                        // results_links.push(url_prefix + pdfUrl);
+                    }
+                });
+                if (pdf_url !== undefined) {
+                    results_links.push({
+                        event_date,
+                        total_registrations: total_registrations,
+                        total_participants: total_participants,
+                        link: url_prefix + pdf_url,
+                    });
                 }
             });
         }
-
         return results_links;
     } catch (error) {
         console.error('Error during scraping main url for results links:', error);
@@ -122,7 +132,7 @@ async function scrape_main_url_for_results_links(link, year, date) {
 };
 
 //TODO: explain
-async function fetch_and_parse_results(url, criteria) {
+async function fetch_and_parse_results(url, event_date, total_registrations, total_participants, criteria) {
     try {
         const {
             data
@@ -160,6 +170,9 @@ async function fetch_and_parse_results(url, criteria) {
 
                 results.push({
                     event: event_name,
+                    event_date,
+                    total_registrations,
+                    total_participants,
                     gender,
                     score,
                     time,

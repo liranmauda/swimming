@@ -70,6 +70,10 @@ let filename = argv.file_name || output_file_name;
 
 const filters = [
     "event",
+    "event_date",
+    "total_registrations",
+    "total_participants",
+    "pool_length",
     "gender",
     "score",
     "time",
@@ -89,10 +93,16 @@ async function _get_data(criteria) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
         data = data.concat(parse_pdf.parseResults(data_array));
     } else if (argv.url) {
-        const links = await parse_url.scrape_main_url_for_results_links(argv.url, year, date);
-        for (const link of links) {
+        const elements = await parse_url.scrape_main_url_for_results_links(argv.url, year, date);
+        for (const element of elements) {
+            const {
+                link,
+                event_date,
+                total_registrations,
+                total_participants
+            } = element
             console.log("Scrapping:", link)
-            const to_concat = await parse_url.fetch_and_parse_results(link, criteria)
+            const to_concat = await parse_url.fetch_and_parse_results(link, event_date.split(" ")[0], total_registrations, total_participants, criteria)
             data = to_concat !== undefined ? data.concat(to_concat) : data;
             // break; //For debug
         }
