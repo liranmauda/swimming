@@ -23,6 +23,21 @@ function _check_hebrew(text) {
     return hebrewPattern.test(text);
 }
 
+function translate_gender(gender) {
+    if (gender.includes("בנים") || gender.includes("גברים")) {
+        return "male";
+    }
+
+    return "female";
+}
+
+function set_year(date) {
+    console.log("LMLM set_year date", date);
+    let [day, month, year] = date.split("/")
+    if (Number(month) >= 9) return Number(year) + 1
+    return Number(year);
+}
+
 // reverse_string will reverse the string but keep the number straight
 function reverse_string(line) {
 
@@ -114,6 +129,8 @@ function fix_files_structure(file_name) {
 
 export {
     name_map,
+    translate_gender,
+    set_year,
     reverse_string,
     extract_event_name,
     group_by_field,
