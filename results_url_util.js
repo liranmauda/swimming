@@ -37,7 +37,6 @@ function get_urls_from_date(cheerio_loaded_HTML, start_date, last_date) {
         }
     });
 
-    console.log("LMLM", urls)
     return urls;
 };
 
@@ -51,7 +50,6 @@ async function get_competition_urls(url, year, date, last_date) {
     }
 
     if (!url.includes('cYear')) url = url + "?cYear=" + year + "&cMonth=0&cType=1&cMode=0#searchForm";
-    console.log("LMLM", url);
 
     const {
         data
@@ -132,7 +130,7 @@ async function scrape_main_url_for_results_links(link, year, date) {
 };
 
 //TODO: explain
-async function fetch_and_parse_results(url, event_date, total_registrations, total_participants, criteria) {
+async function fetch_and_parse_results(url, year, event_date, total_registrations, total_participants, criteria) {
     try {
         const {
             data
@@ -141,9 +139,8 @@ async function fetch_and_parse_results(url, event_date, total_registrations, tot
         const cheerio_loaded_HTML = load(data);
 
         const results = [];
-        let gender;
         const event_info = cheerio_loaded_HTML('.disciplines-title h4').text().trim();
-        event_info.includes("בנים") ? gender = "male" : gender = "female";
+        const gender = utils.translate_gender(event_info);
         if (event_info === undefined) return;
         //The reason we pass event_info is for future use, if we would like to skip scrapping urls based on other criteria.
         if (should_skip_based_on_criteria(event_info, criteria)) return;
@@ -166,20 +163,22 @@ async function fetch_and_parse_results(url, event_date, total_registrations, tot
                 const score = cheerio_loaded_HTML(cells[7]).text().trim();
 
                 // Split the full name into first and last name (assuming a 2-part name)
-                const [lastName, firstName] = fullName.split(' ');
+                // const [lastName, firstName] = fullName.split(' ');
+                const name = fullName.split(' ').filter(item => item.trim() !== '');
 
                 results.push({
                     event: event_name,
                     event_date,
                     total_registrations,
                     total_participants,
+                    age: Number(year) - Number(birthYear),
                     gender,
                     score,
                     time,
                     club,
                     birthYear,
-                    firstName,
-                    lastName,
+                    firstName: name[name.length - 1],
+                    lastName: name[0],
                     lane,
                     heat,
                     position
@@ -198,7 +197,10 @@ async function fetch_and_parse_results(url, event_date, total_registrations, tot
 //return true if we should skip this url, currently only support gender
 function should_skip_based_on_criteria(event_info, criteria) {
     let gender = event_info.split(" - ")[3];
-    gender.includes("בנים") ? gender = "male" : gender = "female";
+    if (gender === undefined) {
+        console.error("gender is undefined. event info:", event_info)
+    }
+    gender = utils.translate_gender(gender);
     if (criteria.gender === gender) return true;
     return false;
 }

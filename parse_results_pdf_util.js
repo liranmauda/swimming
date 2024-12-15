@@ -32,7 +32,8 @@ async function extractPDFText(pdfPath) {
         strings_array = content.items.map(item => {
             const reversed_string = utils.reverse_string(item.str);
             if (reversed_string.includes("תואצות")) {
-                reversed_string.includes("בנים") ? gender = "male" : gender = "female";
+                gender = utils.translate_gender(reversed_string);
+                console.log("LMLM gender", gender);
                 event_name = utils.extract_event_name(item.str);
             }
             return reversed_string;

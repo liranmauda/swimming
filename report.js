@@ -59,13 +59,13 @@ if (argv.pdf_path && argv.url) {
     process.exit(3);
 }
 
+const date = argv.date;
+const append = Boolean(argv.append)
 const pdfPath = argv.pdf_path || "./";
 const output_file_name = argv.output || "swimming_results.json";
-const append = Boolean(argv.append)
-const year = argv.year || "2025";
-const date = argv.date;
 
 let group = argv.group;
+let year = argv.year || "2025";
 let filename = argv.file_name || output_file_name;
 
 const filters = [
@@ -73,6 +73,7 @@ const filters = [
     "event_date",
     "total_registrations",
     "total_participants",
+    "age",
     "pool_length",
     "gender",
     "score",
@@ -102,7 +103,8 @@ async function _get_data(criteria) {
                 total_participants
             } = element
             console.log("Scrapping:", link)
-            const to_concat = await parse_url.fetch_and_parse_results(link, event_date.split(" ")[0], total_registrations, total_participants, criteria)
+            year = utils.set_year(event_date.split(" ")[0]);
+            const to_concat = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
             data = to_concat !== undefined ? data.concat(to_concat) : data;
             // break; //For debug
         }
