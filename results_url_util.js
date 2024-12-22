@@ -11,15 +11,10 @@ const url_prefix = 'https://loglig.com:2053'
 const url = url_prefix + '/LeagueTable/AthleticsDisciplines/10358';
 const base_url = "https://www.isr.org.il/competitions.asp";
 
-// Function to extract the first row date
-function _get_first_row_date(cheerio_loaded_HTML) {
-    const date_text = cheerio_loaded_HTML('.row .c-date').first().text().trim();
-    return moment(date_text, 'D.M.YYYY').format('YYYY-MM-DD'); // Convert to standardized format
-};
-
 // Function to extract URLs from a specific date to the current date
 function get_urls_from_date(cheerio_loaded_HTML, start_date, last_date) {
     const rows = cheerio_loaded_HTML('.row');
+    const formats = ['D.M.YYYY', 'YYYY-MM-DD'];
     const urls = [];
 
     rows.each((index, row) => {
@@ -28,21 +23,24 @@ function get_urls_from_date(cheerio_loaded_HTML, start_date, last_date) {
 
         // if we are not getting last_date, we will use current date
         if (last_date === undefined) {
-            last_date = moment();
+            console.error("last_date cannot be undefined");
+            process.exit(1);
         }
+        last_date = moment(last_date, formats)
+        start_date = moment(start_date, formats)
 
-        // console.log("LMLM", start_date, "LMLM", last_date)
-        if (moment(date_text, 'D.M.YYYY').isBetween(start_date, last_date, undefined, '[]')) {
+        if (moment(date_text, formats).isBetween(start_date, last_date, undefined, '[]')) {
             urls.push(main_url_prefix + url);
         }
+
     });
 
     return urls;
 };
 
 
-async function get_competition_urls(url, year, date, last_date) {
-    const url_array = [];
+async function get_competition_urls(url, year, last_date, start_date) {
+    let url_array = [];
     //if we are not on the base url return the url provided.
     if (!url.includes(base_url)) {
         url_array.push(url);
@@ -50,7 +48,6 @@ async function get_competition_urls(url, year, date, last_date) {
     }
 
     if (!url.includes('cYear')) url = url + "?cYear=" + year + "&cMonth=0&cType=1&cMode=0#searchForm";
-
     const {
         data
     } = await axios.get(url);
@@ -58,13 +55,18 @@ async function get_competition_urls(url, year, date, last_date) {
     const cheerio_loaded_HTML = load(data);
     const date_text = cheerio_loaded_HTML('.row .c-date').first().text().trim();
 
-    if (date === undefined) {
-        date = moment(date_text, 'D.M.YYYY').format('YYYY-MM-DD');
+    if (start_date === undefined) {
+        start_date = moment(date_text, 'D.M.YYYY').format('YYYY-MM-DD');
     }
-    console.log("Getting links from", year, "Start date", date);
+    console.log("Getting links from", year, "Start date", start_date, "to", last_date);
 
-    return get_urls_from_date(cheerio_loaded_HTML, date, last_date);
+    url_array = get_urls_from_date(cheerio_loaded_HTML, start_date, last_date);
 
+    return {
+        url_array,
+        from_date: start_date,
+        to_date: moment(last_date, 'D.M.YYYY').format('YYYY-MM-DD')
+    }
 }
 
 
@@ -87,10 +89,15 @@ async function scrap_main_url_for_main_result_url(url) {
 }
 
 // scrape_main_url_for_results_links will scrap the page and search for all the results links that contains 'https://loglig.com:2053'
-async function scrape_main_url_for_results_links(link, year, date) {
+async function scrape_main_url_for_results_links(link, year, last_date, start_date) {
+    console.log("here", link)
     try {
         const results_links = [];
-        const url_array = await get_competition_urls(link, year, date);
+        const {
+            url_array,
+            from_date,
+            to_date
+        } = await get_competition_urls(link, year, last_date, start_date);
         for (let url of url_array) {
             url = await scrap_main_url_for_main_result_url(url);
             if (url === undefined) continue;
@@ -123,7 +130,11 @@ async function scrape_main_url_for_results_links(link, year, date) {
                 }
             });
         }
-        return results_links;
+        return {
+            results_links,
+            from_date,
+            to_date
+        };
     } catch (error) {
         console.error('Error during scraping main url for results links:', error);
     }
@@ -141,11 +152,16 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
         const results = [];
         const event_info = cheerio_loaded_HTML('.disciplines-title h4').text().trim();
         const gender = utils.translate_gender(event_info);
+        let event_name;
         if (event_info === undefined) return;
         //The reason we pass event_info is for future use, if we would like to skip scrapping urls based on other criteria.
         if (should_skip_based_on_criteria(event_info, criteria)) return;
 
-        const event_name = utils.extract_event_name(event_info.split("\n")[1].trim());
+        try {
+            event_name = utils.extract_event_name(event_info.split("\n")[1].trim());
+        } catch (e) {
+            return results
+        }
 
         cheerio_loaded_HTML('table.res-table tbody tr').each((index, element) => {
             const cells = cheerio_loaded_HTML(element).find('td');
@@ -196,11 +212,7 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
 
 //return true if we should skip this url, currently only support gender
 function should_skip_based_on_criteria(event_info, criteria) {
-    let gender = event_info.split(" - ")[3];
-    if (gender === undefined) {
-        console.error("gender is undefined. event info:", event_info)
-    }
-    gender = utils.translate_gender(gender);
+    const gender = utils.translate_gender(event_info);
     if (criteria.gender === gender) return true;
     return false;
 }
