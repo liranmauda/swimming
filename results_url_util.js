@@ -44,7 +44,11 @@ async function get_competition_urls(url, year, last_date, start_date) {
     //if we are not on the base url return the url provided.
     if (!url.includes(base_url)) {
         url_array.push(url);
-        return url_array;
+        return {
+            url_array,
+            from_date: moment(last_date, 'D.M.YYYY').format('YYYY-MM-DD'),
+            to_date: moment(last_date, 'D.M.YYYY').format('YYYY-MM-DD')
+        }
     }
 
     if (!url.includes('cYear')) url = url + "?cYear=" + year + "&cMonth=0&cType=1&cMode=0#searchForm";
