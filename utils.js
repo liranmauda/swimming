@@ -32,7 +32,6 @@ function translate_gender(gender) {
 }
 
 function set_year(date) {
-    console.log("LMLM set_year date", date);
     let [day, month, year] = date.split("/")
     if (Number(month) >= 9) return Number(year) + 1
     return Number(year);

@@ -32,7 +32,8 @@ function usage() {
     --position              -   Report by position
 
     --year                  -   Competition calender year (end of season)
-    --date                  -   last date in the year
+    --last_date             -   last date in the year
+    --start_date            -   start date in the year
 
     --group                 -   Group by any of the filter fields (for example, event)
     --append                -   Will append to an existing file with the same name.
@@ -59,9 +60,10 @@ if (argv.pdf_path && argv.url) {
     process.exit(3);
 }
 
-const date = argv.date;
 const append = Boolean(argv.append)
 const pdfPath = argv.pdf_path || "./";
+const last_date = argv.last_date || moment();
+const start_date = argv.start_date;
 const output_file_name = argv.output || "swimming_results.json";
 
 let group = argv.group;
@@ -90,12 +92,18 @@ const filters = [
 // _get_data will get the data from a PDF or from a file already created
 async function _get_data(criteria) {
     let data = [];
+    let start_date;
+    let end_date;
     if (argv.pdf_path) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
         data = data.concat(parse_pdf.parseResults(data_array));
     } else if (argv.url) {
-        const elements = await parse_url.scrape_main_url_for_results_links(argv.url, year, date);
-        for (const element of elements) {
+        const {
+            results_links,
+            from_date,
+            to_date
+        } = await parse_url.scrape_main_url_for_results_links(argv.url, year, last_date, start_date);
+        for (const element of results_links) {
             const {
                 link,
                 event_date,
@@ -106,6 +114,8 @@ async function _get_data(criteria) {
             year = utils.set_year(event_date.split(" ")[0]);
             const to_concat = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
             data = to_concat !== undefined ? data.concat(to_concat) : data;
+            start_date = from_date;
+            end_date = to_date;
             // break; //For debug
         }
     } else if (argv.file_name) {
@@ -119,7 +129,11 @@ async function _get_data(criteria) {
         process.exit(0);
     }
 
-    return data;
+    return {
+        data,
+        start_date,
+        end_date
+    };
 }
 
 async function _set_data_file(data, append) {
@@ -157,7 +171,7 @@ function _construct_criteria() {
 // Function to filter based on dynamic keys
 function _filter_by_criteria(data, criteria) {
     return data.filter(item => {
-        return Object.keys(criteria).every(key => item[key].includes(criteria[key]));
+        return Object.keys(criteria).every(key => String(item[key]).includes(criteria[key]));
     });
 }
 
@@ -166,7 +180,11 @@ async function main() {
 
     const criteria = _construct_criteria();
 
-    let data = await _get_data(criteria);
+    let {
+        data,
+        start_date,
+        end_date
+    } = await _get_data(criteria);
     if (Object.keys(criteria).length > 0) {
         data = _filter_by_criteria(data, criteria);
     }
@@ -180,6 +198,7 @@ async function main() {
         }
     } else {
         console.log(data);
+        filename = filename.replace(/\.json$/, "") + "--" + start_date + "--" + end_date + ".json";
         await _set_data_file(data, append);
     }
 }
