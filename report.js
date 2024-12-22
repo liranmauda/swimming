@@ -45,18 +45,10 @@ if (argv.help) {
     process.exit(3);
 }
 
-if (argv.pdf_path && argv.file_name) {
-    console.warn("pdf_path and file_name cannot be set together");
-    process.exit(3);
-}
-
-if (argv.url && argv.file_name) {
-    console.warn("url and file_name cannot be set together");
-    process.exit(3);
-}
-
-if (argv.pdf_path && argv.url) {
-    console.warn("pdf_path and url cannot be set together");
+const conflict_flags = ['pdf_path', 'file_name', 'url'];
+const conflict_flags_count = conflict_flags.filter(flag => argv[flag]).length;
+if (conflict_flags_count > 1) {
+    console.warn("Conflicting flags: pdf_path, file_name, and url cannot be set together.");
     process.exit(3);
 }
 
@@ -112,8 +104,8 @@ async function _get_data(criteria) {
             } = element
             console.log("Scrapping:", link)
             year = utils.set_year(event_date.split(" ")[0]);
-            const to_concat = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
-            data = to_concat !== undefined ? data.concat(to_concat) : data;
+            const to_push = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
+            if (to_push) data.push(...to_push);
             start_date = from_date;
             end_date = to_date;
             // break; //For debug
@@ -139,31 +131,39 @@ async function _get_data(criteria) {
 async function _set_data_file(data, append) {
     if (argv.file_name && filename === output_file_name) {
         console.log("Skipping writing to the same file");
+        return;
     }
+    let final_data = data;
+
     try {
-        if (fs.existsSync(filename) && append) {
-            //naive way, it will create arrays one after the other without appending to the same array in the file.
-            fs.appendFileSync(filename, JSON.stringify(data, null, 2));
-            //This will fix the naive way above. not wise performance wise but doing the work. 
-            utils.fix_files_structure(filename);
-        } else {
-            fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+        if (append && fs.existsSync(filename)) {
+            // Read the existing data, merge with new data, and write back
+            const existing_data = JSON.parse(fs.readFileSync(filename, 'utf-8'));
+            final_data = Array.isArray(existing_data) ? [...existing_data, ...data] // Merge if both are arrays
+                :
+                {
+                    ...existing_data,
+                    ...data
+                }; // Merge if objects
         }
+        fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+
         console.log('Data saved to', filename);
     } catch (error) {
-        console.error('Error processing PDF:', error);
+        console.error('Error writing data to file:', error);
     }
 }
 
 
 // _construct_criteria will build the criteria to filter upon
 function _construct_criteria() {
-    const criteria = {};
-    for (const filter of filters) {
+    const criteria = filters.reduce((criteria, filter) => {
         if (argv[filter]) {
             criteria[filter] = utils.reverse_string(argv[filter]);
         }
-    }
+        return criteria;
+    }, {});
+
     console.log(criteria);
     return criteria;
 }
