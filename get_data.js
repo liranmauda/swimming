@@ -55,7 +55,8 @@ if (conflict_flags_count > 1) {
 const append = Boolean(argv.append)
 const pdfPath = argv.pdf_path || "./";
 const last_date = argv.last_date || moment();
-const start_date = argv.start_date;
+const start_date = argv.start_date; //TODO: check if we need it
+const is_output_file_name = Boolean(argv.output);
 const output_file_name = argv.output || "swimming_results.json";
 
 let group = argv.group;
@@ -102,7 +103,7 @@ async function _get_data(criteria) {
                 total_registrations,
                 total_participants
             } = element
-            console.log("Scrapping:", link)
+            console.log("event date:", event_date, "Scrapping:", link)
             year = utils.set_year(event_date.split(" ")[0]);
             const to_push = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
             if (to_push) data.push(...to_push);
@@ -114,7 +115,7 @@ async function _get_data(criteria) {
         const read_data = fs.readFileSync(filename, 'utf-8');
         data = JSON.parse(read_data)
         Object.keys(criteria).every(key =>
-            filename = filename.replace(/\.json$/, "") + "-" + criteria[key].replaceAll(' ', '-') + ".json");
+            filename = filename.replace(/\.json$/, "") + "-" + String(criteria[key]).replaceAll(' ', '-') + ".json");
     } else {
         console.error("Data must be consumed from a file, pdf, or url");
         usage();
@@ -129,7 +130,7 @@ async function _get_data(criteria) {
 }
 
 async function _set_data_file(data, append) {
-    if (argv.file_name && filename === output_file_name) {
+    if (argv.file_name && filename === output_file_name && !append) {
         console.log("Skipping writing to the same file");
         return;
     }
@@ -146,7 +147,7 @@ async function _set_data_file(data, append) {
                     ...data
                 }; // Merge if objects
         }
-        fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+        fs.writeFileSync(filename, JSON.stringify(final_data, null, 2));
 
         console.log('Data saved to', filename);
     } catch (error) {
@@ -159,7 +160,16 @@ async function _set_data_file(data, append) {
 function _construct_criteria() {
     const criteria = filters.reduce((criteria, filter) => {
         if (argv[filter]) {
-            criteria[filter] = utils.reverse_string(argv[filter]);
+            if (filter === 'position') {
+                const position = Number(argv[filter]);
+                if (!isNaN(position)) {
+                    criteria.positions = Array.from({
+                        length: position
+                    }, (_, i) => i + 1); // Create [1, 2, ..., position]
+                } else {
+                    criteria[filter] = utils.reverse_string(argv[filter]);
+                }
+            }
         }
         return criteria;
     }, {});
@@ -171,7 +181,13 @@ function _construct_criteria() {
 // Function to filter based on dynamic keys
 function _filter_by_criteria(data, criteria) {
     return data.filter(item => {
-        return Object.keys(criteria).every(key => String(item[key]).includes(criteria[key]));
+        return Object.keys(criteria).every(key => {
+            if (key === 'positions') {
+                const positions = criteria[key];
+                return positions.includes(Number(item.position));
+            }
+            return String(item[key]).includes(criteria[key])
+        });
     });
 }
 
@@ -180,6 +196,10 @@ async function main() {
 
     const criteria = _construct_criteria();
 
+    if (fs.existsSync(filename) && !append) {
+        console.log("File already exists, please use the --append flag to append to the file.")
+        process.exit(0);
+    }
     let {
         data,
         start_date,
@@ -193,12 +213,18 @@ async function main() {
         data = utils.group_by_field(data, argv.group);
         for (const key of Object.keys(data)) {
             console.log(key)
-            filename = base_file_name.replace(/\.json$/, "") + "-" + key.replaceAll(' ', '-') + ".json";
+            if (!is_output_file_name) {
+                filename = base_file_name.replace(/\.json$/, "") + "-" + key.replaceAll(' ', '-') + ".json";
+            }
             await _set_data_file(data[key], append);
         }
     } else {
         console.log(data);
-        filename = filename.replace(/\.json$/, "") + "--" + start_date + "--" + end_date + ".json";
+        const regex = /--.+--.+/
+        const has_date = regex.test(filename);
+        if (!is_output_file_name && !has_date) {
+            filename = filename.replace(/\.json$/, "") + "--" + start_date + "--" + end_date + ".json";
+        }
         await _set_data_file(data, append);
     }
 }

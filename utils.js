@@ -10,13 +10,19 @@ const argv = minimist(process.argv.slice(2)); //TODO: remove once fixed in extra
 let event_name;
 
 //TODO: Add more event names to the map
-const name_map = {
+const event_name_map = {
     "מעורבאישי": "Individual medley",
     "חופשי": "Freestyle",
     "גב": "Backstroke",
     "חזה": "Breaststroke",
-    "פרפר": "Butterfly"
+    "פרפר": "Butterfly",
+    "חופשישליחים": "Freestyle relay",
+    "מעורבשליחים": "Medley relay",
 }
+
+// const name_map ={
+
+// }
 
 function _check_hebrew(text) {
     const hebrewPattern = /[\u0590-\u05FF]/;
@@ -76,7 +82,7 @@ function extract_event_name(line) {
     const hebrew_event_name = parts[event_name_pos].trim().replaceAll(' ', '-').replace(/[0-9-]+/g, '');
     const pool_length = parts[event_name_pos].split(" ");
 
-    event_name = name_map[hebrew_event_name.replace(/[0-9-]+/g, '')] || hebrew_event_name;
+    event_name = event_name_map[hebrew_event_name.replace(/[0-9-]+/g, '')] || hebrew_event_name;
     // The pool_length should always be first in the current structure
     event_name = event_name + " " + pool_length[0];
     return event_name;
@@ -99,7 +105,7 @@ function group_by_field(data, field) {
 }
 
 export {
-    name_map,
+    event_name_map,
     translate_gender,
     set_year,
     reverse_string,
