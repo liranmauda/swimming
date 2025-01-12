@@ -15,7 +15,7 @@ function usage() {
     --file_name             -   Input file name
     --output                -   The output file name
 
-    #### Reports
+    #### Data structure
     The following flags can be use for filtering the report.
     It can be used in combination
     Example: --event <event name> --club <club name or subset>
@@ -166,9 +166,9 @@ function _construct_criteria() {
                     criteria.positions = Array.from({
                         length: position
                     }, (_, i) => i + 1); // Create [1, 2, ..., position]
-                } else {
-                    criteria[filter] = utils.reverse_string(argv[filter]);
                 }
+            } else {
+                criteria[filter] = utils.reverse_string(argv[filter]);
             }
         }
         return criteria;
