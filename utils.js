@@ -9,6 +9,25 @@ const argv = minimist(process.argv.slice(2)); //TODO: remove once fixed in extra
 
 let event_name;
 
+const filters = [
+    "event",
+    "event_date",
+    "total_registrations",
+    "total_participants",
+    "age",
+    "pool_length",
+    "gender",
+    "score",
+    "time",
+    "club",
+    "birthYear",
+    "firstName",
+    "lastName",
+    "lane",
+    "heat",
+    "position",
+]
+
 //TODO: Add more event names to the map
 const event_name_map = {
     "מעורבאישי": "Individual medley",
@@ -104,6 +123,113 @@ function group_by_field(data, field) {
     return grouped;
 }
 
+// _get_data will get the data from a PDF or from a file already created
+async function _get_data(filename, criteria) {
+    let data = [];
+    let start_date;
+    let end_date;
+    if (argv.pdf_path) {
+        const data_array = await parse_pdf.extractPDFText(pdfPath);
+        data = data.concat(parse_pdf.parseResults(data_array));
+    } else if (argv.url) {
+        const {
+            results_links,
+            from_date,
+            to_date
+        } = await parse_url.scrape_main_url_for_results_links(argv.url, year, last_date, start_date);
+        for (const element of results_links) {
+            const {
+                link,
+                event_date,
+                total_registrations,
+                total_participants
+            } = element
+            console.log("event date:", event_date, "Scrapping:", link)
+            year = utils.set_year(event_date.split(" ")[0]);
+            const to_push = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
+            if (to_push) data.push(...to_push);
+            start_date = from_date;
+            end_date = to_date;
+            // break; //For debug
+        }
+    } else if (argv.file_name) {
+        const read_data = fs.readFileSync(filename, 'utf-8');
+        data = JSON.parse(read_data)
+        Object.keys(criteria).every(key =>
+            filename = filename.replace(/\.json$/, "") + "-" + String(criteria[key]).replaceAll(' ', '-') + ".json");
+    } else {
+        console.error("Data must be consumed from a file, pdf, or url");
+        usage();
+        process.exit(0);
+    }
+
+    return {
+        data,
+        start_date,
+        end_date,
+        filename
+    };
+}
+
+// _construct_criteria will build the criteria to filter upon
+function _construct_criteria() {
+    const criteria = filters.reduce((criteria, filter) => {
+        if (argv[filter]) {
+            if (filter === 'position') {
+                const position = Number(argv[filter]);
+                if (!isNaN(position)) {
+                    criteria.positions = Array.from({
+                        length: position
+                    }, (_, i) => i + 1); // Create [1, 2, ..., position]
+                }
+            } else {
+                criteria[filter] = reverse_string(argv[filter]);
+            }
+        }
+        return criteria;
+    }, {});
+
+    console.log(criteria);
+    return criteria;
+}
+
+// Function to filter based on dynamic keys
+function _filter_by_criteria(data, criteria) {
+    return data.filter(item => {
+        return Object.keys(criteria).every(key => {
+            if (key === 'positions') {
+                const positions = criteria[key];
+                return positions.includes(Number(item.position));
+            }
+            return String(item[key]).includes(criteria[key])
+        });
+    });
+}
+
+// get_filtered_data will filter based on dynamic keys
+async function get_filtered_data(init_filename, append) {
+    const criteria = _construct_criteria();
+
+    if (fs.existsSync(init_filename) && !append) {
+        console.log("File already exists, please use the --append flag to append to the file.")
+        process.exit(0);
+    }
+    let {
+        data,
+        start_date,
+        end_date,
+        filename
+    } = await _get_data(init_filename, criteria);
+    if (Object.keys(criteria).length > 0) {
+        data = _filter_by_criteria(data, criteria);
+    }
+    return {
+        data,
+        start_date,
+        end_date,
+        filename
+    };
+}
 export {
     event_name_map,
     translate_gender,
@@ -111,4 +237,5 @@ export {
     reverse_string,
     extract_event_name,
     group_by_field,
+    get_filtered_data
 };
