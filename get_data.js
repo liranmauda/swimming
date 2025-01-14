@@ -1,5 +1,4 @@
 import fs from 'fs';
-import moment from 'moment';
 import minimist from 'minimist';
 import * as utils from './utils.js';
 
