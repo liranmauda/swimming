@@ -1,8 +1,6 @@
 import fs from 'fs';
 import moment from 'moment';
 import minimist from 'minimist';
-import * as parse_pdf from './parse_results_pdf_util.js';
-import * as parse_url from './results_url_util.js';
 import * as utils from './utils.js';
 
 const argv = minimist(process.argv.slice(2));
@@ -53,15 +51,11 @@ if (conflict_flags_count > 1) {
 }
 
 const append = Boolean(argv.append)
-const pdfPath = argv.pdf_path || "./";
-const last_date = argv.last_date || moment();
-const start_date = argv.start_date; //TODO: check if we need it
 const is_output_file_name = Boolean(argv.output);
 const output_file_name = argv.output || "swimming_results.json";
 const initial_filename = argv.file_name || output_file_name;
 
 let group = argv.group;
-let year = argv.year || "2025";
 
 async function _set_data_file(filename, data, append) {
     if (argv.file_name && filename === output_file_name && !append) {
