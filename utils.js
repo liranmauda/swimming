@@ -1,11 +1,19 @@
 import fs from 'fs';
 import minimist from 'minimist';
+import * as parse_url from './results_url_util.js';
+import * as parse_pdf from './parse_results_pdf_util.js';
 
 const numberRegex = /\d+/g; //regex numbers
 const timeRegex = /^(\d{2}):(\d{2})\.(\d{2})$/; //regex time format
 const datePattern = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/; //regex date format
 
 const argv = minimist(process.argv.slice(2)); //TODO: remove once fixed in extract_event_name
+
+const pdfPath = argv.pdf_path || "./";
+const last_date = argv.last_date || moment();
+const start_date = argv.start_date; //TODO: check if we need it
+
+let year = argv.year || "2025";
 
 let event_name;
 
@@ -145,7 +153,7 @@ async function _get_data(filename, criteria) {
                 total_participants
             } = element
             console.log("event date:", event_date, "Scrapping:", link)
-            year = utils.set_year(event_date.split(" ")[0]);
+            year = set_year(event_date.split(" ")[0]);
             const to_push = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
             if (to_push) data.push(...to_push);
             start_date = from_date;
