@@ -12,7 +12,6 @@ const argv = minimist(process.argv.slice(2)); //TODO: remove once fixed in extra
 
 const pdfPath = argv.pdf_path || "./";
 const last_date = argv.last_date || moment();
-const start_date = argv.start_date; //TODO: check if we need it
 
 let year = argv.year || "2025";
 
@@ -98,21 +97,37 @@ function reverse_string(line) {
 }
 
 // extract_event_name extract the event name from the PDF 
-function extract_event_name(line) {
+function extract_event_name(line, new_line) {
     // If we get the event name by the flag return it.
     if (argv.event) { //TODO: change this function signature to get the event instead of using argv
         event_name = argv.event;
         return event_name;
     }
+    let parts = line.split("-");
+    let event_name_pos = 0;
+    let hebrew_event_name;
+    let pool_length;
 
-    const parts = line.split("-");
-    const event_name_pos = 0;
-    const hebrew_event_name = parts[event_name_pos].trim().replaceAll(' ', '-').replace(/[0-9-]+/g, '');
-    const pool_length = parts[event_name_pos].split(" ");
+    if (!new_line) {
+        parts = parts[0].trim().split(" ");
+        event_name_pos = parts.length - 1;
+        hebrew_event_name = parts[event_name_pos];
+        if (_check_hebrew(parts[event_name_pos - 1])) {
+            hebrew_event_name = parts[event_name_pos - 1] + hebrew_event_name;
+            pool_length = parts[event_name_pos - 2];
+        } else {
+            pool_length = parts[event_name_pos - 1];
+        }
+        event_name = event_name_map[hebrew_event_name] || hebrew_event_name;
+        event_name = event_name + " " + pool_length;
+    } else {
+        hebrew_event_name = parts[event_name_pos].trim().replaceAll(' ', '-').replace(/[0-9-]+/g, '');
+        pool_length = parts[event_name_pos].split(" ");
+        event_name = event_name_map[hebrew_event_name.replace(/[0-9-]+/g, '')] || hebrew_event_name;
+        // The pool_length should always be first in the current structure
+        event_name = event_name + " " + pool_length[0];
+    }
 
-    event_name = event_name_map[hebrew_event_name.replace(/[0-9-]+/g, '')] || hebrew_event_name;
-    // The pool_length should always be first in the current structure
-    event_name = event_name + " " + pool_length[0];
     return event_name;
 }
 
@@ -135,7 +150,7 @@ function group_by_field(data, field) {
 // _get_data will get the data from a PDF or from a file already created
 async function _get_data(filename, criteria) {
     let data = [];
-    let start_date;
+    let start_date = argv.start_date; //Probably need to be elsewhere
     let end_date;
     if (argv.pdf_path) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
@@ -152,8 +167,11 @@ async function _get_data(filename, criteria) {
                 event_date,
                 total_registrations,
                 total_participants
-            } = element
-            console.log("event date:", event_date, "Scrapping:", link)
+            } = element;
+            const log = `event date: ${event_date}, Scrapping: ${link}`;
+            console.log(log);
+            fs.existsSync("links.log") ?
+                fs.appendFileSync("links.log", log + "\n") : fs.writeFileSync("links.log", log + "\n");
             year = set_year(event_date.split(" ")[0]);
             const to_push = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
             if (to_push) data.push(...to_push);
