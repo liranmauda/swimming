@@ -102,7 +102,6 @@ async function main() {
             await _set_data_file(filename, data[key], append);
         }
     } else {
-        console.log(data);
         const regex = /--.+--.+/
         const has_date = regex.test(filename);
         if (!is_output_file_name && !has_date) {

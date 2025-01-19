@@ -1,3 +1,4 @@
+import fs from 'fs';
 import axios from 'axios';
 import moment from 'moment';
 import * as utils from './utils.js';
@@ -50,8 +51,8 @@ async function get_competition_urls(url, year, last_date, start_date) {
             to_date: moment(last_date, 'D.M.YYYY').format('YYYY-MM-DD')
         }
     }
-
-    if (!url.includes('cYear')) url = url + "?cYear=" + year + "&cMonth=0&cType=1&cMode=0#searchForm";
+    // + "&cMonth=0&cType=1&cMode=0#searchForm" filter ius not working properly, It filters out some valid results.
+    if (!url.includes('cYear')) url = url + "?cYear=" + year;
     const {
         data
     } = await axios.get(url);
@@ -150,7 +151,6 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
         const {
             data
         } = await axios.get(url);
-
         const cheerio_loaded_HTML = load(data);
 
         const results = [];
@@ -158,11 +158,15 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
         const gender = utils.translate_gender(event_info);
         let event_name;
         if (event_info === undefined) return;
+
         //The reason we pass event_info is for future use, if we would like to skip scrapping urls based on other criteria.
         if (should_skip_based_on_criteria(event_info, criteria)) return;
-
         try {
-            event_name = utils.extract_event_name(event_info.split("\n")[1].trim());
+            if (event_info.split("\n")[1] !== undefined) {
+                event_name = utils.extract_event_name(event_info.split("\n")[1].trim(), true);
+            } else {
+                event_name = utils.extract_event_name(event_info, false);
+            }
         } catch (e) {
             return results
         }
@@ -209,7 +213,9 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
         return results;
 
     } catch (error) {
-        console.error('Error fetching or parsing results:', error);
+        console.error('Error fetching or parsing results from:', url);
+        fs.existsSync("error_urls.log") ?
+            fs.appendFileSync("error_urls.log", url + "\n") : fs.writeFileSync("error_urls.log", url + "\n");
     }
 }
 
