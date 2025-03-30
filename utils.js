@@ -45,6 +45,7 @@ const event_name_map = {
     "פרפר": "Butterfly",
     "חופשישליחים": "Freestyle relay",
     "מעורבשליחים": "Medley relay",
+
 }
 
 // const name_map ={
@@ -66,6 +67,7 @@ function translate_gender(gender) {
 
 function set_year(date) {
     let [day, month, year] = date.split("/")
+    if (year === undefined) return year;
     if (Number(month) >= 9) return Number(year) + 1
     return Number(year);
 }
@@ -152,6 +154,7 @@ async function _get_data(filename, criteria) {
     let data = [];
     let start_date = argv.start_date; //Probably need to be elsewhere
     let end_date;
+    console.log("LMLM Getting data from start date: ", start_date, " to end date: ", end_date);
     if (argv.pdf_path) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
         data = data.concat(parse_pdf.parseResults(data_array));
@@ -172,7 +175,7 @@ async function _get_data(filename, criteria) {
             console.log(log);
             fs.existsSync("links.log") ?
                 fs.appendFileSync("links.log", log + "\n") : fs.writeFileSync("links.log", log + "\n");
-            year = set_year(event_date.split(" ")[0]);
+            year = set_year(event_date.split(" ")[0]) || year;
             const to_push = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
             if (to_push) data.push(...to_push);
             start_date = from_date;
@@ -250,6 +253,7 @@ async function get_filtered_data(init_filename, append) {
     if (Object.keys(criteria).length > 0) {
         data = _filter_by_criteria(data, criteria);
     }
+
     return {
         data,
         start_date,

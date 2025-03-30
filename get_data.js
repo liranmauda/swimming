@@ -98,6 +98,8 @@ async function main() {
             console.log(key)
             if (!is_output_file_name) {
                 filename = base_file_name.replace(/\.json$/, "") + "-" + key.replaceAll(' ', '-') + ".json";
+            } else {
+                filename = output_file_name;
             }
             await _set_data_file(filename, data[key], append);
         }

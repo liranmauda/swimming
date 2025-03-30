@@ -14,12 +14,16 @@ const base_url = "https://www.isr.org.il/competitions.asp";
 
 // Function to extract URLs from a specific date to the current date
 function get_urls_from_date(cheerio_loaded_HTML, start_date, last_date) {
+    console.log("LMLM get_urls_from_date:: Getting links from", start_date, "to", last_date);
     const rows = cheerio_loaded_HTML('.row');
     const formats = ['D.M.YYYY', 'YYYY-MM-DD'];
     const urls = [];
 
     rows.each((index, row) => {
-        const date_text = cheerio_loaded_HTML(row).find('.c-date').text().trim();
+        let date_text = cheerio_loaded_HTML(row).find('.c-date').text().trim();
+        if (date_text.split('.')[0].includes('-')) {
+            date_text = date_text.split('.')[0].split('-')[0] + '.' + date_text.split('.')[1] + '.' + date_text.split('.')[2];
+        }
         const url = cheerio_loaded_HTML(row).find('.c-name a').attr('href');
 
         // if we are not getting last_date, we will use current date
@@ -29,13 +33,12 @@ function get_urls_from_date(cheerio_loaded_HTML, start_date, last_date) {
         }
         last_date = moment(last_date, formats)
         start_date = moment(start_date, formats)
-
         if (moment(date_text, formats).isBetween(start_date, last_date, undefined, '[]')) {
             urls.push(main_url_prefix + url);
         }
 
     });
-
+    console.log("LMLM get_urls_from_date:: Found ", urls.length, "links");
     return urls;
 };
 
@@ -95,7 +98,7 @@ async function scrap_main_url_for_main_result_url(url) {
 
 // scrape_main_url_for_results_links will scrap the page and search for all the results links that contains 'https://loglig.com:2053'
 async function scrape_main_url_for_results_links(link, year, last_date, start_date) {
-    console.log("here", link)
+    console.log("here", link, year, last_date, start_date);
     try {
         const results_links = [];
         const {
