@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>דוח תחרות שחייה</title>
+  <style>
+    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #268aab; }
+    select, input, button { margin: 5px; padding: 5px; }
+    #pagination button {
+      margin: 2px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    #pagination button:disabled {
+      background-color: #ccccccb4;
+      cursor: default;
+    }
+    .header-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background-color: #000; /* background matches the logo */
+      color: #ff69b4; /* hot pink text like the logo */
+      padding: 20px 40px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      flex-wrap: wrap;
+    }
+    .banner-logo {
+      height: 80px;
+      object-fit: contain;
+    }
+    .banner-title {
+      font-size: 2em;
+      font-weight: bold;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    #sortTimeBtn {
+      background-color: #268aab;
+      border: 1px solid #268aab; /* match background */
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      outline: none; /* removes focus ring in some browsers */
+    }
+
+    #sortTimeBtn:focus {
+      outline: none; /* extra safe for keyboard nav */
+    }
+
+    #sortTimeBtn:hover {
+      background-color: #1e708b; /* optional darker hover effect */
+      border-color: #1e708b;
+    }
+  </style>
+</head>
+<body>
+    <div class="header-banner">
+        <img src="/Users/liranmauda/Downloads/WhatsApp\ Image\ 2024-06-26\ at\ 13.36.22.jpeg" alt="OSSO Givatayim Logo" class="banner-logo">
+        <div class="banner-title">דוח תחרות שחייה</div>
+    </div>
+
+  <input type="file" id="fileInput" accept=".json" />
+  
+  <div id="filters" style="margin-top: 20px; display:none;">
+    <label>אירוע: 
+        <select id="filterEvent">
+          <option value="">-- כל האירועים --</option>
+        </select>
+    </label>
+    <label>מין: 
+      <select id="filterGender">
+        <option value="">-- בחר --</option>
+        <option value="female">נקבה</option>
+        <option value="male">זכר</option>
+      </select>
+    </label>
+    <label>שנת לידה: <input type="text" id="filterBirthYear" size="4"></label>
+    <label>מועדון: <input type="text" id="filterClub"></label>
+    <button onclick="applyFilters()">סנן</button>
+</div>
+
+<div id="resultCount" style="margin-top: 10px; font-weight: bold;"></div>
+
+  <table id="reportTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>שם פרטי</th>
+        <th>שם משפחה</th>
+        <th>אירוע</th>
+        <th>תאריך</th>
+        <th>
+          זמן
+          <button id="sortTimeBtn" onclick="sortByTime()">🔽</button>
+        </th>
+        <th>מועדון</th>
+        <th>שנת לידה</th>
+        <th>מין</th>
+        <th>גיל</th>
+        <th>ציון</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const DATA_URL = 'data/swimming_results-2022-2025-borowser.json';
+    const PAGE_SIZE = 10000;
+    let originalData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    let filterTimeout;
+    let sortAscending = true; // Toggle sort direction
+
+    // document.getElementById('fileInput').addEventListener('change', function(event) {
+    //   const file = event.target.files[0];
+    //   if (!file) return;
+    //   const reader = new FileReader();
+    //   reader.onload = function(e) {
+    //     let json;
+    //     try {
+    //         json = e.target.result.replace(/^\uFEFF/, ''); // remove BOM
+    //         originalData = JSON.parse(json);
+    //     } catch (err) {
+    //         alert('קובץ JSON לא תקין');
+    //         return;
+    //     }
+
+    //     populateEventDropdown();
+    //     document.getElementById('filters').style.display = 'block';
+    //     applyFilters(); // show first filtered page
+    // };
+    //   reader.readAsText(file);
+    // });
+
+    window.onload = function() {
+      fetch(DATA_URL)
+        .then(res => {
+          if (!res.ok) throw new Error('Network error');
+          return res.json();
+        })
+        .then(data => {
+          originalData = data;
+          document.getElementById('filters').style.display = 'block';
+          applyFilters();
+        })
+        .catch(err => {
+          alert('שגיאה בטעינת הקובץ: ' + err.message);
+        });
+    };
+
+    // LMLM TODO: remove debounce if not needed
+    // function debounceFilters() {
+    //   clearTimeout(filterTimeout);
+    //   filterTimeout = setTimeout(applyFilters, 300);
+    // }
+
+    function populateEventDropdown() {
+      const eventSelect = document.getElementById('filterEvent');
+      const uniqueEvents = [...new Set(originalData.map(item => item.event))].sort();
+      uniqueEvents.forEach(event => {
+        const option = document.createElement('option');
+        option.value = event;
+        option.textContent = event;
+        eventSelect.appendChild(option);
+      });
+    }
+
+    function applyFilters() {
+      const eventVal = document.getElementById('filterEvent').value;
+      const genderVal = document.getElementById('filterGender').value;
+      const birthYearVal = document.getElementById('filterBirthYear').value.trim();
+      const clubVal = document.getElementById('filterClub').value.trim();
+
+      filteredData = originalData.filter(item => {
+        return (!eventVal || item.event === eventVal) &&
+               (!genderVal || item.gender === genderVal) &&
+               (!birthYearVal || item.birthYear === birthYearVal) &&
+               (!clubVal || item.club.includes(clubVal));
+      });
+
+      currentPage = 1;
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.querySelector('#reportTable tbody');
+      tbody.innerHTML = '';
+
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      const pageData = filteredData.slice(start, end);
+
+      pageData.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.firstName}</td>
+          <td>${item.lastName}</td>
+          <td>${item.event}</td>
+          <td>${item.event_date}</td>
+          <td>${item.time}</td>
+          <td>${item.club}</td>
+          <td>${item.birthYear}</td>
+          <td>${item.gender}</td>
+          <td>${item.age}</td>
+          <td>${item.score}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      document.getElementById('reportTable').style.display = pageData.length ? 'table' : 'none';
+      document.getElementById('resultCount').textContent = 
+        `מציג ${filteredData.length ? Math.min(filteredData.length, end) : 0} מתוך ${filteredData.length} רשומות`;
+
+      renderPagination();
+    }
+
+    function renderPagination() {
+      const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+      const container = document.getElementById('pagination');
+      container.innerHTML = '';
+
+      if (totalPages <= 1) return;
+
+      for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.disabled = i === currentPage;
+        btn.onclick = () => {
+          currentPage = i;
+          renderTable();
+        };
+        container.appendChild(btn);
+      }
+    }
+
+    function sortByTime() {
+      const timeToSeconds = t => {
+        if (!t) return Infinity;
+        const [min, sec = '0'] = t.split(':');
+        const [s, ms = '0'] = sec.split('.');
+        return parseInt(min || 0) * 60 + parseInt(s || 0) + parseInt(ms || 0) / 100;
+      };
+
+      filteredData.sort((a, b) => {
+        const diff = timeToSeconds(a.time) - timeToSeconds(b.time);
+        return sortAscending ? diff : -diff;
+      });
+
+      const sortBtn = document.getElementById('sortTimeBtn');
+      sortBtn.textContent = sortAscending ? '🔼' : '🔽';
+
+      sortAscending = !sortAscending;
+      currentPage = 1;
+      renderTable();
+    }
+  </script>
+</body>
+</html>
