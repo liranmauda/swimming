@@ -85,6 +85,7 @@
     </label>
     <label>שנת לידה: <input type="text" id="filterBirthYear" size="4"></label>
     <label>מועדון: <input type="text" id="filterClub"></label>
+    <label>גיל: <input type="number" id="filterAge" min="10"></label>
     <button onclick="applyFilters()">סנן</button>
 </div>
 
@@ -179,12 +180,14 @@
       const genderVal = document.getElementById('filterGender').value;
       const birthYearVal = document.getElementById('filterBirthYear').value.trim();
       const clubVal = document.getElementById('filterClub').value.trim();
+      const ageVal = document.getElementById('filterAge').value;
 
       filteredData = originalData.filter(item => {
         return (!eventVal || item.event === eventVal) &&
                (!genderVal || item.gender === genderVal) &&
                (!birthYearVal || item.birthYear === birthYearVal) &&
-               (!clubVal || item.club.includes(clubVal));
+               (!clubVal || item.club.includes(clubVal)) &&
+               (!ageVal || item.age == ageVal);
       });
 
       currentPage = 1;
