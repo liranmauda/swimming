@@ -113,7 +113,7 @@ function extract_event_name(line, new_line) {
     if (!new_line) {
         parts = parts[0].trim().split(" ");
         event_name_pos = parts.length - 1;
-        hebrew_event_name = parts[event_name_pos];
+        hebrew_event_name = parts[event_name_pos].replace(/[A-Za-z]/g, '');
         if (_check_hebrew(parts[event_name_pos - 1])) {
             hebrew_event_name = parts[event_name_pos - 1] + hebrew_event_name;
             pool_length = parts[event_name_pos - 2];
@@ -123,7 +123,7 @@ function extract_event_name(line, new_line) {
         event_name = event_name_map[hebrew_event_name] || hebrew_event_name;
         event_name = event_name + " " + pool_length;
     } else {
-        hebrew_event_name = parts[event_name_pos].trim().replaceAll(' ', '-').replace(/[0-9-]+/g, '');
+        hebrew_event_name = parts[event_name_pos].trim().replaceAll(' ', '-').replace(/[0-9-]+/g, '').replace(/[A-Za-z]/g, '');
         pool_length = parts[event_name_pos].split(" ");
         event_name = event_name_map[hebrew_event_name.replace(/[0-9-]+/g, '')] || hebrew_event_name;
         // The pool_length should always be first in the current structure
@@ -154,7 +154,7 @@ async function _get_data(filename, criteria) {
     let data = [];
     let start_date = argv.start_date; //Probably need to be elsewhere
     let end_date;
-    console.log("LMLM Getting data from start date: ", start_date, " to end date: ", end_date);
+    console.log("Getting data from start date: ", start_date, " to end date: ", end_date);
     if (argv.pdf_path) {
         const data_array = await parse_pdf.extractPDFText(pdfPath);
         data = data.concat(parse_pdf.parseResults(data_array));
@@ -254,6 +254,25 @@ async function get_filtered_data(init_filename, append) {
     if (Object.keys(criteria).length > 0) {
         data = _filter_by_criteria(data, criteria);
     }
+
+    // Remove duplicates
+    data = data.filter((item, index, self) =>
+        index === self.findIndex((t) => (
+            t.firstName === item.firstName &&
+            t.lastName === item.lastName &&
+            t.event === item.event &&
+            t.event_date === item.event_date &&
+            t.age === item.age &&
+            t.total_registrations === item.total_registrations &&
+            t.total_participants === item.total_participants &&
+            t.position === item.position &&
+            t.heat === item.heat &&
+            t.lane === item.lane &&
+            t.birthYear === item.birthYear
+        ))
+    );
+
+    data = data.filter(item => item.event.trim() !== "undefined");
 
     return {
         data,

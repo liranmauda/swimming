@@ -162,7 +162,7 @@ function sortByTime() {
             } else {
                 last_date = moment()
             }
-            console.log("LMLM last_date", last_date, moment(item.event_date, 'DD/MM/YYYY'), moment(item.event_date, 'DD/MM/YYYY').isBefore(moment(last_date)));
+            console.log("last_date", last_date, moment(item.event_date, 'DD/MM/YYYY'), moment(item.event_date, 'DD/MM/YYYY').isBefore(moment(last_date)));
             return moment(item.event_date, 'DD/MM/YYYY').isBefore(moment(last_date))
         });
     }

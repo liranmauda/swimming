@@ -14,7 +14,7 @@ const base_url = "https://www.isr.org.il/competitions.asp";
 
 // Function to extract URLs from a specific date to the current date
 function get_urls_from_date(cheerio_loaded_HTML, start_date, last_date) {
-    console.log("LMLM get_urls_from_date:: Getting links from", start_date, "to", last_date);
+    console.log("get_urls_from_date:: Getting links from", start_date, "to", last_date);
     const rows = cheerio_loaded_HTML('.row');
     const formats = ['D.M.YYYY', 'YYYY-MM-DD'];
     const urls = [];
@@ -38,7 +38,7 @@ function get_urls_from_date(cheerio_loaded_HTML, start_date, last_date) {
         }
 
     });
-    console.log("LMLM get_urls_from_date:: Found ", urls.length, "links");
+    console.log("get_urls_from_date:: Found ", urls.length, "links");
     return urls;
 };
 
@@ -100,7 +100,7 @@ async function scrap_main_url_for_main_result_url(url) {
 async function scrape_main_url_for_results_links(link, year, last_date, start_date) {
     console.log("here", link, year, last_date, start_date);
     try {
-        let results_links = [];
+        const results_links = [];
         const {
             url_array,
             from_date,
@@ -128,20 +128,22 @@ async function scrape_main_url_for_results_links(link, year, last_date, start_da
                         // results_links.push(url_prefix + pdfUrl);
                     }
                 });
+                if (total_participants === undefined) total_participants = "-";
+                if (total_registrations === undefined) total_registrations = "-";
+                let link = url;
                 if (pdf_url !== undefined) {
-                    results_links.push({
-                        event_date,
-                        total_registrations: total_registrations,
-                        total_participants: total_participants,
-                        link: url_prefix + pdf_url,
-                    });
-                } else {
-                    results_links = [{
-                        link: url,
-                    }];
+                    link = url_prefix + pdf_url
                 }
+                results_links.push({
+                    event_date,
+                    total_registrations: total_registrations,
+                    total_participants: total_participants,
+                    link,
+                });
+
             });
         }
+        console.log("scrape_main_url_for_results_links:: Found ", results_links.length, "links");
         return {
             results_links,
             from_date,
@@ -154,8 +156,6 @@ async function scrape_main_url_for_results_links(link, year, last_date, start_da
 
 //TODO: explain
 async function fetch_and_parse_results(url, year, event_date, total_registrations, total_participants, criteria) {
-    if (total_participants === undefined) total_participants = "-";
-    if (total_registrations === undefined) total_registrations = "-";
     try {
         const {
             data
@@ -163,11 +163,13 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
         const cheerio_loaded_HTML = load(data);
         const results = [];
         const event_info = cheerio_loaded_HTML('.disciplines-title h4').text().trim();
-        if (event_date === "") event_date = event_info.split("\n")[0].split("-")[1].trim();
 
         const gender = utils.translate_gender(event_info);
         let event_name;
         if (event_info === undefined) return;
+        if (event_date === "" && event_info !== "") {
+            event_date = event_info.split("\n")[0].split("-")[1].trim();
+        }
 
         //The reason we pass event_info is for future use, if we would like to skip scrapping urls based on other criteria.
         if (should_skip_based_on_criteria(event_info, criteria)) return;

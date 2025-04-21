@@ -82,10 +82,10 @@ function convert_json_to_csv(data) {
 try {
     console.log('Converting JSON to CSV:', filename);
 
-    const min_age = 10;
-    const max_age = 13;
-    console.log(`Getting data by age between ${min_age} and ${max_age}`);
-    json_data = json_data.filter((item) => item.age >= min_age && item.age <= max_age);
+    // const min_age = 10;
+    // const max_age = 13;
+    // console.log(`Getting data by age between ${min_age} and ${max_age}`);
+    // json_data = json_data.filter((item) => item.age >= min_age && item.age <= max_age);
 
     console.log('Removing duplicates per name, event, and age');
     json_data = json_data.filter((item, index, self) =>
