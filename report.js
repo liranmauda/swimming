@@ -10,10 +10,11 @@ const argv = minimist(process.argv.slice(2));
 
 const append = Boolean(argv.append)
 const pdfPath = argv.pdf_path || "./";
-const last_date = argv.last_date || moment();
 const is_output_file_name = Boolean(argv.output);
 const output_file_name = argv.output || "swimming_results.json";
 const initial_filename = argv.file_name || output_file_name;
+
+let last_date = argv.last_date || moment();
 
 //LMLM
 // const filename = argv.file_name
@@ -64,6 +65,8 @@ if (!argv.fullName || argv.fullName.split(' ').length < 2) {
     process.exit(3);
 }
 
+const formats = ['D.M.YYYY', 'YYYY-MM-DD'];
+
 argv.gender = "female";
 
 const name = argv.fullName.split(' ');
@@ -76,8 +79,21 @@ let {
     filename
 } = await utils.get_filtered_data(initial_filename, append);
 
+// sorting the data by time
 data = data.filter(item => moment(item.time, 'mm:ss.SS', true).isValid())
     .sort((a, b) => moment.duration(`00:${a.time}`).asMilliseconds() - moment.duration(`00:${b.time}`).asMilliseconds());
+
+if (argv.last_date) {
+    data = data.filter(item => {
+        if (item.event_date !== undefined) {
+            const last_date_year = Number(item.birthYear) + Number(argv.age);
+            last_date = moment(last_date, formats).year(last_date_year);
+        } else {
+            last_date = moment(argv.last_date, formats)
+        }
+        return moment(item.event_date, formats).isBefore(moment(last_date, formats))
+    });
+}
 
 //remove duplicate names per event, keep the first one
 data = data.filter((item, index, self) =>
@@ -107,8 +123,12 @@ data = data.filter((item, index, self) =>
 data = utils.group_by_field(data, argv.group);
 
 for (const key of Object.keys(data)) {
+    // position is the index of the name in the data array
     const position = data[key].indexOf(data[key].find(a =>
         a.firstName === utils.reverse_string(name[0]) && a.lastName === utils.reverse_string(name[name.length - 1])));
+    // total_registrations is the number of participants in the event
+    const total_participants = data[key].length;
+
     if (argv.printTimes !== undefined) {
         for (let i = 0; i <= position; i++) {
             // for (let i = 0; i <= 5; i++) {
@@ -116,7 +136,8 @@ for (const key of Object.keys(data)) {
         }
     }
     if (position + 1 === 0) continue;
-    console.log("event", key, "position", position + 1, "best Time date", data[key][position].event_date);
+    const percentage = ((position + 1) / total_participants * 100).toFixed(2);
+    console.log("event", key, "position", position + 1, "out of", total_participants, "(", percentage, "%) best Time date", data[key][position].event_date);
     //print out the time in the position and the time in the position 0 (winner) and second and third places
     if (position + 1 === 1) {
         console.log("Best time in the event", data[key][0].time, "currently first place");
