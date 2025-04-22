@@ -206,7 +206,7 @@
       const end = start + PAGE_SIZE;
       const pageData = filteredData.slice(start, end);
 
-      pageData.forEach(item => {
+      pageData.forEach((item, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${index + 1}</td>
