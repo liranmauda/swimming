@@ -66,6 +66,7 @@
     <div class="header-banner">
         <img src="asset1.jpeg" alt="OSSO Givatayim Logo" class="banner-logo">
         <div class="banner-title">דוח תחרות שחייה</div>
+        <img src="asset1.jpeg" alt="OSSO Givatayim Logo" class="banner-logo">
     </div>
 
   <!-- for debug locally -->
@@ -113,6 +114,8 @@
     <tbody></tbody>
   </table>
 
+  <div id="pagination" style="margin-top: 20px;"></div>
+
   <script>
     const DATA_URL = 'data/swimming_results-2022-2025-borowser.json';
     const PAGE_SIZE = 10000;
@@ -144,20 +147,19 @@
     //   reader.readAsText(file);
     // });
 
-    window.onload = function() {
-      fetch(DATA_URL)
-        .then(res => {
-          if (!res.ok) throw new Error('Network error');
-          return res.json();
-        })
-        .then(data => {
-          originalData = data;
-          document.getElementById('filters').style.display = 'block';
-          applyFilters();
-        })
-        .catch(err => {
-          alert('שגיאה בטעינת הקובץ: ' + err.message);
-        });
+    window.onload = async function () {
+      try {
+        const res = await fetch(DATA_URL);
+        if (!res.ok) throw new Error('Network error');
+
+        const data = await res.json();
+        originalData = data;
+        populateEventDropdown();
+        document.getElementById('filters').style.display = 'block';
+        applyFilters();
+      } catch (err) {
+        alert('שגיאה בטעינת הקובץ: ' + err.message);
+      }
     };
 
     // LMLM TODO: remove debounce if not needed
