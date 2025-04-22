@@ -251,7 +251,7 @@
 
     function sortByTime() {
       const timeToSeconds = t => {
-        if (!t) return Infinity;
+        if (!t || !/^\d+:\d+\.\d+$/.test(t)) return Infinity;
         const [min, sec = '0'] = t.split(':');
         const [s, ms = '0'] = sec.split('.');
         return parseInt(min || 0) * 60 + parseInt(s || 0) + parseInt(ms || 0) / 100;
