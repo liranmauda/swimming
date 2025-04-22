@@ -96,6 +96,7 @@
   <table id="reportTable" style="display:none;">
     <thead>
       <tr>
+        <th>#</th>
         <th>שם פרטי</th>
         <th>שם משפחה</th>
         <th>אירוע</th>
@@ -108,7 +109,6 @@
         <th>שנת לידה</th>
         <th>מין</th>
         <th>גיל</th>
-        <th>ציון</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -209,6 +209,7 @@
       pageData.forEach(item => {
         const row = document.createElement('tr');
         row.innerHTML = `
+          <td>${index + 1}</td>
           <td>${item.firstName}</td>
           <td>${item.lastName}</td>
           <td>${item.event}</td>
@@ -218,7 +219,6 @@
           <td>${item.birthYear}</td>
           <td>${item.gender}</td>
           <td>${item.age}</td>
-          <td>${item.score}</td>
         `;
         tbody.appendChild(row);
       });
