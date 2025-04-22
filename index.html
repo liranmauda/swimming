@@ -88,6 +88,9 @@
     <label>שנת לידה: <input type="text" id="filterBirthYear" size="4"></label>
     <label>מועדון: <input type="text" id="filterClub"></label>
     <label>גיל: <input type="number" id="filterAge" min="10"></label>
+    <label>תאריך: <input type="date" id="filterDate"></label>
+    <label>שם פרטי: <input type="firstName" id="filterFirstName"></label>
+    <label>שם משפחה: <input type="lastName" id="filterLastName"></label>
     <button onclick="applyFilters()">סנן</button>
 </div>
 
@@ -185,13 +188,19 @@
       const birthYearVal = document.getElementById('filterBirthYear').value.trim();
       const clubVal = document.getElementById('filterClub').value.trim();
       const ageVal = document.getElementById('filterAge').value;
+      const dateVal = document.getElementById('filterDate').value;
+      const firstNameVal = document.getElementById('filterFirstName').value.trim();
+      const lastNameVal = document.getElementById('filterLastName').value.trim();
 
       filteredData = originalData.filter(item => {
         return (!eventVal || item.event === eventVal) &&
                (!genderVal || item.gender === genderVal) &&
                (!birthYearVal || item.birthYear === birthYearVal) &&
                (!clubVal || item.club.includes(clubVal)) &&
-               (!ageVal || item.age == ageVal);
+               (!ageVal || item.age == ageVal) &&
+               (!dateVal || item.event_date === dateVal) &&
+               (!firstNameVal || item.firstName.includes(firstNameVal)) &&
+               (!lastNameVal || item.lastName.includes(lastNameVal));
       });
 
       currentPage = 1;
