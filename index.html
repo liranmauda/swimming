@@ -60,6 +60,12 @@
       background-color: #1e708b; /* optional darker hover effect */
       border-color: #1e708b;
     }
+
+    .highlight-osso {
+      background-color: #ff69b4 !important;
+      color: white;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -198,13 +204,12 @@
                (!birthYearVal || item.birthYear === birthYearVal) &&
                (!clubVal || item.club.includes(clubVal)) &&
                (!ageVal || item.age == ageVal) &&
-               (!dateVal || item.event_date === dateVal) &&
+               (!dateVal || normalizeDate(item.event_date) === dateVal) &&
                (!firstNameVal || item.firstName.includes(firstNameVal)) &&
                (!lastNameVal || item.lastName.includes(lastNameVal));
       });
 
-      currentPage = 1;
-      renderTable();
+      sortByTime();
     }
 
     function renderTable() {
@@ -217,6 +222,9 @@
 
       pageData.forEach((item, index) => {
         const row = document.createElement('tr');
+        if (item.club && item.club.includes('אוסו')) {
+          row.classList.add('highlight-osso');
+        }
         row.innerHTML = `
           <td>${index + 1}</td>
           <td>${item.firstName}</td>
@@ -277,6 +285,13 @@
       sortAscending = !sortAscending;
       currentPage = 1;
       renderTable();
+    }
+
+    function normalizeDate(dateStr) {
+      // Convert from "DD/MM/YYYY" to "YYYY-MM-DD"
+      if (!dateStr) return '';
+      const [day, month, year] = dateStr.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
   </script>
 </body>
