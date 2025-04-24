@@ -35,6 +35,10 @@
     <label>שם פרטי: <input type="firstName" id="filterFirstName"></label>
     <label>שם משפחה: <input type="lastName" id="filterLastName"></label>
     <button onclick="applyFilters()">סנן</button>
+    <label>
+      <input type="checkbox" id="filterUnique" />
+      הצג רק ערכים ייחודיים
+    </label>
 </div>
 
 <div id="resultCount" style="margin-top: 10px; font-weight: bold; display: none;"></div>
@@ -148,7 +152,7 @@
       // Set date summary TODO: remove
       const summaryDiv = document.getElementById('filterSummary');
       summaryDiv.textContent = dateVal
-        ? `תאריך שנבחר: ${dateVal}`
+        ? `תאריך שנבחר: ${dateVal} ${normalizeDate(dateVal)}`
         : '';
 
       sortAscending = true // Reset sort direction
@@ -211,6 +215,8 @@
     }
 
     function sortByTime() {
+      const uniqueOnly = document.getElementById('filterUnique').checked;
+
       const timeToSeconds = t => {
         if (!t || !/^\d+:\d+\.\d+$/.test(t)) return Infinity;
         const [min, sec = '0'] = t.split(':');
@@ -223,6 +229,14 @@
         return sortAscending ? diff : -diff;
       });
 
+      if (uniqueOnly) {
+        filteredData = filteredData.filter((item, index, self) =>
+          index === self.findIndex((t) => (
+            t.firstName === item.firstName && t.lastName === item.lastName && t.event === item.event
+          ))
+        );
+      }
+      
       const sortBtn = document.getElementById('sortTimeBtn');
       sortBtn.textContent = sortAscending ? '🔼' : '🔽';
 
