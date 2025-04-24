@@ -61,3 +61,8 @@ select, input, button { margin: 5px; padding: 5px; }
     color: white;
     font-weight: bold;
 }
+
+.filter-line {
+    display: block;
+    margin-top: 10px;
+}
