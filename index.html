@@ -3,70 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>דוח תחרות שחייה</title>
-  <style>
-    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background-color: #268aab; }
-    select, input, button { margin: 5px; padding: 5px; }
-    #pagination button {
-      margin: 2px;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-    #pagination button:disabled {
-      background-color: #ccccccb4;
-      cursor: default;
-    }
-    .header-banner {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      background-color: #000; /* background matches the logo */
-      color: #ff69b4; /* hot pink text like the logo */
-      padding: 20px 40px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-      flex-wrap: wrap;
-    }
-    .banner-logo {
-      height: 80px;
-      object-fit: contain;
-    }
-    .banner-title {
-      font-size: 2em;
-      font-weight: bold;
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    #sortTimeBtn {
-      background-color: #268aab;
-      border: 1px solid #268aab; /* match background */
-      color: white;
-      padding: 5px 10px;
-      border-radius: 5px;
-      cursor: pointer;
-      outline: none; /* removes focus ring in some browsers */
-    }
-
-    #sortTimeBtn:focus {
-      outline: none; /* extra safe for keyboard nav */
-    }
-
-    #sortTimeBtn:hover {
-      background-color: #1e708b; /* optional darker hover effect */
-      border-color: #1e708b;
-    }
-
-    .highlight-osso {
-      background-color: #ff69b4 !important;
-      color: white;
-      font-weight: bold;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="header-banner">
@@ -100,7 +37,8 @@
     <button onclick="applyFilters()">סנן</button>
 </div>
 
-<div id="resultCount" style="margin-top: 10px; font-weight: bold;"></div>
+<div id="resultCount" style="margin-top: 10px; font-weight: bold; display: none;"></div>
+<div id="filterSummary" style="margin-top: 20px; font-weight: bold;"></div>
 
   <table id="reportTable" style="display:none;">
     <thead>
@@ -165,7 +103,6 @@
         originalData = data;
         populateEventDropdown();
         document.getElementById('filters').style.display = 'block';
-        applyFilters();
       } catch (err) {
         alert('שגיאה בטעינת הקובץ: ' + err.message);
       }
@@ -208,7 +145,13 @@
                (!firstNameVal || item.firstName.includes(firstNameVal)) &&
                (!lastNameVal || item.lastName.includes(lastNameVal));
       });
+      // Set date summary TODO: remove
+      const summaryDiv = document.getElementById('filterSummary');
+      summaryDiv.textContent = dateVal
+        ? `תאריך שנבחר: ${dateVal}`
+        : '';
 
+      sortAscending = true // Reset sort direction
       sortByTime();
     }
 
@@ -244,6 +187,7 @@
       document.getElementById('resultCount').textContent = 
         `מציג ${filteredData.length ? Math.min(filteredData.length, end) : 0} מתוך ${filteredData.length} רשומות`;
 
+      document.getElementById('resultCount').style.display = 'block';
       renderPagination();
     }
 
