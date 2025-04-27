@@ -71,7 +71,6 @@ function applyFilters() {
 
 
     filteredData = originalData.filter(item => {
-        console.log(item);
         return (!eventVal || item.event === eventVal) &&
             (!genderVal || item.gender === genderVal) &&
             (!birthYearVal || item.birthYear === birthYearVal) &&
@@ -154,7 +153,7 @@ function sortByTime() {
     };
 
     if (filterBySeason) {
-        data = data.filter(item => {
+        filteredData = filteredData.filter(item => {
             let last_date;
             if (item.event_date !== undefined) {
                 const last_date_year = Number(item.birthYear) + Number(ageVal);
@@ -162,6 +161,7 @@ function sortByTime() {
             } else {
                 last_date = moment()
             }
+            console.log("LMLM last_date", last_date, moment(item.event_date, 'DD/MM/YYYY'), moment(item.event_date, 'DD/MM/YYYY').isBefore(moment(last_date)));
             return moment(item.event_date, 'DD/MM/YYYY').isBefore(moment(last_date))
         });
     }
