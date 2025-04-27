@@ -69,6 +69,7 @@ function applyFilters() {
     const firstNameVal = document.getElementById('filterFirstName').value.trim();
     const lastNameVal = document.getElementById('filterLastName').value.trim();
 
+
     filteredData = originalData.filter(item => {
         console.log(item);
         return (!eventVal || item.event === eventVal) &&
@@ -141,7 +142,9 @@ function renderPagination() {
 }
 
 function sortByTime() {
+    const ageVal = document.getElementById('filterAge').value; //Not efficient, as we already get it in the filters
     const uniqueOnly = document.getElementById('filterUnique').checked;
+    const filterBySeason = document.getElementById('filterBySeason').checked;
 
     const timeToSeconds = t => {
         if (!t || !/^\d+:\d+\.\d+$/.test(t)) return Infinity;
@@ -149,6 +152,19 @@ function sortByTime() {
         const [s, ms = '0'] = sec.split('.');
         return parseInt(min || 0) * 60 + parseInt(s || 0) + parseInt(ms || 0) / 100;
     };
+
+    if (filterBySeason) {
+        data = data.filter(item => {
+            let last_date;
+            if (item.event_date !== undefined) {
+                const last_date_year = Number(item.birthYear) + Number(ageVal);
+                last_date = moment().year(last_date_year);
+            } else {
+                last_date = moment()
+            }
+            return moment(item.event_date, 'DD/MM/YYYY').isBefore(moment(last_date))
+        });
+    }
 
     filteredData.sort((a, b) => {
         const diff = timeToSeconds(a.time) - timeToSeconds(b.time);
