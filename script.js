@@ -60,6 +60,7 @@ function populateEventDropdown() {
 }
 
 function applyFilters() {
+    filteredData = [...originalData];
     const eventVal = document.getElementById('filterEvent').value;
     const genderVal = document.getElementById('filterGender').value;
     const birthYearVal = document.getElementById('filterBirthYear').value.trim();
@@ -70,7 +71,7 @@ function applyFilters() {
     const lastNameVal = document.getElementById('filterLastName').value.trim();
 
 
-    filteredData = originalData.filter(item => {
+    filteredData = filteredData.filter(item => {
         return (!eventVal || item.event === eventVal) &&
             (!genderVal || item.gender === genderVal) &&
             (!birthYearVal || item.birthYear === birthYearVal) &&
