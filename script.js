@@ -1,4 +1,4 @@
-const DATA_URL = 'data/2022-2025-05-04-browser.json';
+const DATA_URL = 'data/swimming_results-2022-2025-borowser.json';
 const PAGE_SIZE = 10000;
 let originalData = [];
 let filteredData = [];
