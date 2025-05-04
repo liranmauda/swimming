@@ -175,8 +175,9 @@ async function _get_data(filename, criteria) {
             console.log(log);
             fs.existsSync("links.log") ?
                 fs.appendFileSync("links.log", log + "\n") : fs.writeFileSync("links.log", log + "\n");
-            year = set_year(event_date.split(" ")[0]) || year;
-            const to_push = await parse_url.fetch_and_parse_results(link, year, event_date.split(" ")[0], total_registrations, total_participants, criteria)
+            year = (event_date) ? set_year(event_date.split(" ")[0]) : year;
+            const date = (event_date) ? event_date.split(" ")[0] : "";
+            const to_push = await parse_url.fetch_and_parse_results(link, year, date, total_registrations, total_participants, criteria)
             if (to_push) data.push(...to_push);
             start_date = from_date;
             end_date = to_date;
