@@ -100,7 +100,7 @@ async function scrap_main_url_for_main_result_url(url) {
 async function scrape_main_url_for_results_links(link, year, last_date, start_date) {
     console.log("here", link, year, last_date, start_date);
     try {
-        const results_links = [];
+        let results_links = [];
         const {
             url_array,
             from_date,
@@ -135,6 +135,10 @@ async function scrape_main_url_for_results_links(link, year, last_date, start_da
                         total_participants: total_participants,
                         link: url_prefix + pdf_url,
                     });
+                } else {
+                    results_links = [{
+                        link: url,
+                    }];
                 }
             });
         }
@@ -150,14 +154,17 @@ async function scrape_main_url_for_results_links(link, year, last_date, start_da
 
 //TODO: explain
 async function fetch_and_parse_results(url, year, event_date, total_registrations, total_participants, criteria) {
+    if (total_participants === undefined) total_participants = "-";
+    if (total_registrations === undefined) total_registrations = "-";
     try {
         const {
             data
         } = await axios.get(url);
         const cheerio_loaded_HTML = load(data);
-
         const results = [];
         const event_info = cheerio_loaded_HTML('.disciplines-title h4').text().trim();
+        if (event_date === "") event_date = event_info.split("\n")[0].split("-")[1].trim();
+
         const gender = utils.translate_gender(event_info);
         let event_name;
         if (event_info === undefined) return;
@@ -171,14 +178,14 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
                 event_name = utils.extract_event_name(event_info, false);
             }
         } catch (e) {
+            console.error("Error parsing event name:", e);
             return results
         }
 
         cheerio_loaded_HTML('table.res-table tbody tr').each((index, element) => {
             const cells = cheerio_loaded_HTML(element).find('td');
-
             // Skip rows with fewer than expected columns (e.g., header rows or notes)
-            if (cells.length === 8) {
+            if (cells.length >= 8) {
                 // Get the relevant data from each column (adjust indices as necessary)
                 const position = cheerio_loaded_HTML(cells[0]).text().trim();
                 const fullName = utils.reverse_string(cheerio_loaded_HTML(cells[1]).text().trim());
@@ -216,7 +223,7 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
         return results;
 
     } catch (error) {
-        console.error('Error fetching or parsing results from:', url);
+        console.error('Error fetching or parsing results from:', url, error);
         fs.existsSync("error_urls.log") ?
             fs.appendFileSync("error_urls.log", url + "\n") : fs.writeFileSync("error_urls.log", url + "\n");
     }
