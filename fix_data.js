@@ -48,6 +48,15 @@ function reverse_fields(data) {
 // data = data.filter(item => !remove.includes(item.event.trim()));
 // data = data.filter(item => item.event.trim() !== "DNF");
 
-data = reverse_fields(data);
+
+/* replace evnet date with that have the value "10 םינב" with the value "17/01/2025" */
+data = data.map(item => {
+    if (item.event_date === "10 םינב") {
+        item.event_date = "17/01/2025";
+    }
+    return item;
+});
+
+// data = reverse_fields(data);
 fs.writeFileSync(output_file, JSON.stringify(data, null, 2));
 console.log('Data saved to', output_file);
