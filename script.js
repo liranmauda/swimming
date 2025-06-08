@@ -37,14 +37,15 @@ async function getData() {
     const res = await fetch(DATA_URL);
     if (!res.ok) throw new Error('Network error');
 
-    return await res.json();
+    const data = res.json();
+    return data;
 }
 
 
 window.onload = async function () {
     try {
         // We will getData every filter we apply, butt here we are getting it to populate the dropdowns and show the first page
-        const data = getData();
+        const data = await getData();
         originalData = data;
         populateEventDropdown();
         document.getElementById('filters').style.display = 'block';
