@@ -1,4 +1,4 @@
-const DATA_URL = 'data/2022-2025-05-05-browser.json';
+const DATA_URL = 'data/2022-2025-08-06-browser.json';
 const PAGE_SIZE = 10000;
 let originalData = [];
 let filteredData = [];
@@ -7,33 +7,44 @@ let filterTimeout;
 let sortAscending = true; // Toggle sort direction
 
 // for dubug locally
-// document.getElementById('fileInput').addEventListener('change', function(event) {
-//   const file = event.target.files[0];
-//   if (!file) return;
-//   const reader = new FileReader();
-//   reader.onload = function(e) {
-//     let json;
-//     try {
-//         json = e.target.result.replace(/^\uFEFF/, ''); // remove BOM
-//         originalData = JSON.parse(json);
-//     } catch (err) {
-//         alert('קובץ JSON לא תקין');
-//         return;
-//     }
+// document.getElementById('fileInput').addEventListener('change', function (event) {
+//     const file = event.target.files[0];
+//     if (!file) return;
+//     const reader = new FileReader();
+//     reader.onload = function (e) {
+//         let json;
+//         try {
+//             json = e.target.result.replace(/^\uFEFF/, ''); // remove BOM
+//             originalData = JSON.parse(json);
+//         } catch (err) {
+//             alert('קובץ JSON לא תקין');
+//             return;
+//         }
 
-//     populateEventDropdown();
-//     document.getElementById('filters').style.display = 'block';
-//     applyFilters(); // show first filtered page
-// };
-//   reader.readAsText(file);
+//         populateEventDropdown();
+//         document.getElementById('filters').style.display = 'block';
+//         applyFilters(); // show first filtered page
+//     };
+//     reader.readAsText(file);
 // });
+
+// function debounceFilters() {
+//     clearTimeout(filterTimeout);
+//     filterTimeout = setTimeout(applyFilters, 300);
+// }
+
+async function getData() {
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error('Network error');
+
+    return await res.json();
+}
+
 
 window.onload = async function () {
     try {
-        const res = await fetch(DATA_URL);
-        if (!res.ok) throw new Error('Network error');
-
-        const data = await res.json();
+        // We will getData every filter we apply, butt here we are getting it to populate the dropdowns and show the first page
+        const data = getData();
         originalData = data;
         populateEventDropdown();
         document.getElementById('filters').style.display = 'block';
@@ -41,12 +52,6 @@ window.onload = async function () {
         alert('שגיאה בטעינת הקובץ: ' + err.message);
     }
 };
-
-// LMLM TODO: remove debounce if not needed
-// function debounceFilters() {
-//   clearTimeout(filterTimeout);
-//   filterTimeout = setTimeout(applyFilters, 300);
-// }
 
 function populateEventDropdown() {
     const eventSelect = document.getElementById('filterEvent');
@@ -59,8 +64,8 @@ function populateEventDropdown() {
     });
 }
 
-function applyFilters() {
-    filteredData = [...originalData];
+async function applyFilters() {
+    filteredData = await getData();
     const eventVal = document.getElementById('filterEvent').value;
     const genderVal = document.getElementById('filterGender').value;
     const birthYearVal = document.getElementById('filterBirthYear').value.trim();
