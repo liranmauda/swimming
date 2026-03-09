@@ -19,7 +19,7 @@ select, input, button { margin: 5px; padding: 5px; }
     justify-content: center;
     gap: 20px;
     background-color: #000; /* background matches the logo */
-    color: #ff69b4; /* hot pink text like the logo */
+    color: #2bc8d9;
     padding: 20px 40px;
     border-radius: 12px;
     margin-bottom: 20px;
@@ -56,8 +56,8 @@ select, input, button { margin: 5px; padding: 5px; }
     border-color: #1e708b;
 }
 
-.highlight-osso {
-    background-color: #ff69b4 !important;
+.highlight-marom {
+    background-color: #2bc8d9 !important;
     color: white;
     font-weight: bold;
 }

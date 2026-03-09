@@ -2,75 +2,53 @@
 <html lang="he">
 <head>
   <meta charset="UTF-8">
-  <title>דוח תחרות שחייה</title>
+  <title>שחייה – דף הבית</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+  <style>
+    .landing-nav {
+      list-style: none;
+      padding: 0;
+      margin: 2em 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+      max-width: 400px;
+    }
+    .landing-nav a {
+      display: block;
+      padding: 1em 1.25em;
+      background-color: #268aab;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+      text-align: center;
+      transition: background-color 0.2s;
+    }
+    .landing-nav a:hover {
+      background-color: #1e708b;
+    }
+    .landing-intro {
+      margin-bottom: 1.5em;
+      font-size: 1.1em;
+    }
+  </style>
 </head>
 <body>
-    <div class="header-banner">
-        <img src="asset1.jpeg" alt="OSSO Givatayim Logo" class="banner-logo">
-        <div class="banner-title">דוח תחרות שחייה</div>
-        <img src="asset1.jpeg" alt="OSSO Givatayim Logo" class="banner-logo">
-    </div>
+  <div class="header-banner">
+    <img src="logo.png" alt="Logo" class="banner-logo">
+    <div class="banner-title">שחייה</div>
+    <img src="logo.png" alt="Logo" class="banner-logo">
+  </div>
 
-  <!-- for debug locally -->
-  <!-- <input type="file" id="fileInput" accept=".json" /> -->
-  
-  <div id="filters" style="margin-top: 20px; display:none;">
-    <label>אירוע: 
-        <select id="filterEvent">
-          <option value="">-- כל האירועים --</option>
-        </select>
-    </label>
-    <label>מין: 
-      <select id="filterGender">
-        <option value="">-- בחר --</option>
-        <option value="female">נקבה</option>
-        <option value="male">זכר</option>
-      </select>
-    </label>
-    <label>שנת לידה: <input type="text" id="filterBirthYear" size="4"></label>
-    <label>מועדון: <input type="text" id="filterClub"></label>
-    <label>גיל: <input type="number" id="filterAge" min="10"></label>
-    <label>תאריך: <input type="date" id="filterDate"></label>
-    <label>שם פרטי: <input type="firstName" id="filterFirstName"></label>
-    <label>שם משפחה: <input type="lastName" id="filterLastName"></label>
-    <button onclick="applyFilters()">סנן</button>
-    <label class="filter-line">
-      <input type="checkbox" id="filterUnique" />
-      הצג רק ערכים ייחודיים
-    </label>
-    <label class="filter-line">
-      <input type="checkbox" id="filterBySeason" />
-      סנן עד התקופה בשנה
-    </label>
-</div>
+  <p class="landing-intro">בחר דף:</p>
 
-<div id="resultCount" style="margin-top: 10px; font-weight: bold; display: none;"></div>
+  <ul class="landing-nav">
+    <li>
+      <a href="report.html">דוח תחרות שחייה</a>
+    </li>
+  </ul>
 
-  <table id="reportTable" style="display:none;">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>שם פרטי</th>
-        <th>שם משפחה</th>
-        <th>אירוע</th>
-        <th>תאריך</th>
-        <th>
-          זמן
-          <button id="sortTimeBtn" onclick="sortByTime()">🔽</button>
-        </th>
-        <th>מועדון</th>
-        <th>שנת לידה</th>
-        <th>מין</th>
-        <th>גיל</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <div id="pagination" style="margin-top: 20px;"></div>
-
-  <script src="script.js"></script>
+  <p style="margin-top: 2em; color: #666;">ניתן להוסיף קישורים נוספים לדפים כאן.</p>
 </body>
 </html>

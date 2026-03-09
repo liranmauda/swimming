@@ -154,6 +154,66 @@ async function scrape_main_url_for_results_links(link, year, last_date, start_da
     }
 };
 
+// Parse start list HTML (GenerateSwimmingAllStartList) and return Map of key -> entryTime.
+// Key: eventName|heat|lane or lastName|firstName|birthYear for matching to results.
+function parse_start_list_html(html, eventNameForSection) {
+    const $ = load(html);
+    const entryMap = new Map();
+    let currentEvent = eventNameForSection || '';
+    $('table').each((ti, table) => {
+        const $table = $(table);
+        const headers = [];
+        $table.find('thead th').each((i, el) => { headers.push(utils.reverse_string($(el).text().trim())); });
+        const entryTimeIdx = headers.findIndex(h => h.includes('זמן כניסה'));
+        const startTimeIdx = headers.findIndex(h => h.includes('שעת התחלה'));
+        if (entryTimeIdx < 0) return;
+        const laneIdx = headers.findIndex(h => h.includes('מסלול'));
+        const heatIdx = headers.findIndex(h => h.includes('מקצה'));
+        const lastNameIdx = headers.findIndex(h => h.includes('משפחה'));
+        const firstNameIdx = headers.findIndex(h => h.includes('פרטי'));
+        const birthYearIdx = headers.findIndex(h => h.includes('שנת לידה'));
+        $table.find('tbody tr').each((ri, tr) => {
+            const cells = $(tr).find('td');
+            if (cells.length < Math.max(entryTimeIdx, laneIdx, 0) + 1) return;
+            const entryTime = $(cells[entryTimeIdx]).text().trim();
+            const lane = laneIdx >= 0 ? $(cells[laneIdx]).text().trim() : '';
+            const heat = heatIdx >= 0 ? $(cells[heatIdx]).text().trim() : '';
+            const lastName = lastNameIdx >= 0 ? utils.reverse_string($(cells[lastNameIdx]).text().trim()) : '';
+            const firstName = firstNameIdx >= 0 ? utils.reverse_string($(cells[firstNameIdx]).text().trim()) : '';
+            const birthYear = birthYearIdx >= 0 ? $(cells[birthYearIdx]).text().trim() : '';
+            const key = (currentEvent || eventNameForSection) && lane && heat
+                ? `${currentEvent || eventNameForSection}|${heat}|${lane}`
+                : `${lastName}|${firstName}|${birthYear}`;
+            if (key && entryTime) entryMap.set(key, entryTime);
+        });
+    });
+    return entryMap;
+}
+
+// Fetch start list page from same origin if linked from the results page; merge entry times into results.
+async function fetch_and_merge_entry_times(resultsPageHtml, resultsPageUrl, results, eventName) {
+    const $ = load(resultsPageHtml);
+    let startListHref = null;
+    $('a[href*="GenerateSwimmingAllStartList"], a[href*="StartList"]').each((i, el) => {
+        const href = $(el).attr('href');
+        if (href) startListHref = href.startsWith('http') ? href : new URL(href, resultsPageUrl).href;
+    });
+    if (!startListHref) return results;
+    try {
+        const { data } = await axios.get(startListHref);
+        const entryMap = parse_start_list_html(data, eventName);
+        if (!entryMap.size) return results;
+        results.forEach(r => {
+            const key = `${r.heat}|${r.lane}`;
+            const key2 = `${r.lastName}|${r.firstName}|${r.birthYear}`;
+            r.entryTime = entryMap.get(`${eventName}|${r.heat}|${r.lane}`) || entryMap.get(key) || entryMap.get(key2) || r.entryTime || '';
+        });
+    } catch (e) {
+        console.warn('Could not fetch start list for entry times:', e.message);
+    }
+    return results;
+}
+
 //TODO: explain
 async function fetch_and_parse_results(url, year, event_date, total_registrations, total_participants, criteria) {
     try {
@@ -184,22 +244,51 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
             return results
         }
 
+        // Build column index map from thead if present (supports optional שעת התחלה, זמן כניסה)
+        const col = {};
+        const theadRow = cheerio_loaded_HTML('table.res-table thead tr').first();
+        if (theadRow.length) {
+            theadRow.find('th').each((i, el) => {
+                const text = utils.reverse_string(cheerio_loaded_HTML(el).text().trim());
+                if (text.includes('מיקום') || text.includes('position')) col.position = i;
+                else if (text.includes('שם') && text.includes('משפחה')) col.lastName = i;
+                else if (text.includes('שם') && text.includes('פרטי')) col.firstName = i;
+                else if (text.includes('שנת לידה')) col.birthYear = i;
+                else if (text.includes('מועדון')) col.club = i;
+                else if (text.includes('מקצה') || text.includes('heat')) col.heat = i;
+                else if (text.includes('מסלול') || text.includes('lane')) col.lane = i;
+                else if ((text.includes('תוצאה') || text.includes('זמן')) && !text.includes('כניסה')) col.time = i;
+                else if (text.includes('ניקוד') || text.includes('score')) col.score = i;
+                else if (text.includes('שעת התחלה')) col.startTime = i;
+                else if (text.includes('זמן כניסה')) col.entryTime = i;
+            });
+        }
+        const getCell = (cells, key, defaultIdx) => {
+            const idx = col[key] !== undefined ? col[key] : defaultIdx;
+            return idx >= 0 && cells[idx] ? cheerio_loaded_HTML(cells[idx]).text().trim() : '';
+        };
+
         cheerio_loaded_HTML('table.res-table tbody tr').each((index, element) => {
             const cells = cheerio_loaded_HTML(element).find('td');
             // Skip rows with fewer than expected columns (e.g., header rows or notes)
             if (cells.length >= 8) {
-                // Get the relevant data from each column (adjust indices as necessary)
-                const position = cheerio_loaded_HTML(cells[0]).text().trim();
-                const fullName = utils.reverse_string(cheerio_loaded_HTML(cells[1]).text().trim());
-                const birthYear = cheerio_loaded_HTML(cells[2]).text().trim();
-                const club = utils.reverse_string(cheerio_loaded_HTML(cells[3]).text().trim());
-                const heat = cheerio_loaded_HTML(cells[4]).text().trim();
-                const lane = cheerio_loaded_HTML(cells[5]).text().trim();
-                const time = cheerio_loaded_HTML(cells[6]).text().trim();
-                const score = cheerio_loaded_HTML(cells[7]).text().trim();
+                const position = getCell(cells, 'position', 0);
+                let fullName;
+                if (col.firstName !== undefined && col.lastName !== undefined) {
+                    fullName = utils.reverse_string(getCell(cells, 'lastName', 1) + ' ' + getCell(cells, 'firstName', 1)).trim();
+                } else {
+                    fullName = utils.reverse_string(cheerio_loaded_HTML(cells[1]).text().trim());
+                }
+                const birthYear = getCell(cells, 'birthYear', 2) || cheerio_loaded_HTML(cells[2]).text().trim();
+                const club = utils.reverse_string(getCell(cells, 'club', 3) || cheerio_loaded_HTML(cells[3]).text().trim());
+                const heat = getCell(cells, 'heat', 4) || cheerio_loaded_HTML(cells[4]).text().trim();
+                const lane = getCell(cells, 'lane', 5) || cheerio_loaded_HTML(cells[5]).text().trim();
+                const time = getCell(cells, 'time', 6) || cheerio_loaded_HTML(cells[6]).text().trim();
+                const score = getCell(cells, 'score', 7) || cheerio_loaded_HTML(cells[7]).text().trim();
+                // שעת התחלה (heat start time), זמן כניסה (entry time) - from optional columns or fixed 9th/10th
+                const startTime = getCell(cells, 'startTime', 8) || (cells.length > 8 ? cheerio_loaded_HTML(cells[8]).text().trim() : '');
+                const entryTime = getCell(cells, 'entryTime', 9) || (cells.length > 9 ? cheerio_loaded_HTML(cells[9]).text().trim() : '');
 
-                // Split the full name into first and last name (assuming a 2-part name)
-                // const [lastName, firstName] = fullName.split(' ');
                 const name = fullName.split(' ').filter(item => item.trim() !== '');
 
                 results.push({
@@ -213,14 +302,21 @@ async function fetch_and_parse_results(url, year, event_date, total_registration
                     time,
                     club,
                     birthYear,
-                    firstName: name[name.length - 1],
-                    lastName: name[0],
+                    firstName: name[name.length - 1] || '',
+                    lastName: name[0] || '',
                     lane,
                     heat,
-                    position
+                    position,
+                    startTime: startTime || '',   // שעת התחלה
+                    entryTime: entryTime || ''    // זמן כניסה
                 });
             }
         });
+
+        // Optionally fetch start list from same page to fill זמן כניסה (entry time)
+        if (results.length) {
+            await fetch_and_merge_entry_times(data, url, results, event_name);
+        }
 
         return results;
 
@@ -243,4 +339,5 @@ export {
     get_competition_urls,
     scrape_main_url_for_results_links,
     fetch_and_parse_results,
+    parse_start_list_html,
 }

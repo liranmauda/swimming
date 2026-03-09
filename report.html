@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>דוח תחרות שחייה</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+</head>
+<body>
+    <div class="header-banner">
+        <img src="logo.png" alt="Logo" class="banner-logo">
+        <div class="banner-title">דוח תחרות שחייה</div>
+        <img src="logo.png" alt="Logo" class="banner-logo">
+    </div>
+
+  <!-- for debug locally -->
+  <!-- <input type="file" id="fileInput" accept=".json" /> -->
+  
+  <div id="filters" style="margin-top: 20px; display:none;">
+    <label>אירוע: 
+        <select id="filterEvent">
+          <option value="">-- כל האירועים --</option>
+        </select>
+    </label>
+    <label>מין: 
+      <select id="filterGender">
+        <option value="">-- בחר --</option>
+        <option value="female">נקבה</option>
+        <option value="male">זכר</option>
+      </select>
+    </label>
+    <label>שנת לידה: <input type="text" id="filterBirthYear" size="4"></label>
+    <label>מועדון: <input type="text" id="filterClub"></label>
+    <label>גיל: <input type="number" id="filterAge" min="10"></label>
+    <label>תאריך: <input type="date" id="filterDate"></label>
+    <label>שם פרטי: <input type="firstName" id="filterFirstName"></label>
+    <label>שם משפחה: <input type="lastName" id="filterLastName"></label>
+    <button onclick="applyFilters()">סנן</button>
+    <label class="filter-line">
+      <input type="checkbox" id="filterUnique" />
+      הצג רק ערכים ייחודיים
+    </label>
+    <label class="filter-line">
+      <input type="checkbox" id="filterBySeason" />
+      סנן עד התקופה בשנה
+    </label>
+</div>
+
+<div id="resultCount" style="margin-top: 10px; font-weight: bold; display: none;"></div>
+
+  <table id="reportTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>שם פרטי</th>
+        <th>שם משפחה</th>
+        <th>אירוע</th>
+        <th>תאריך</th>
+        <th>
+          זמן
+          <button id="sortTimeBtn" onclick="sortByTime()">🔽</button>
+        </th>
+        <th>שעת התחלה</th>
+        <th>זמן כניסה</th>
+        <th>מועדון</th>
+        <th>שנת לידה</th>
+        <th>מין</th>
+        <th>גיל</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="pagination" style="margin-top: 20px;"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

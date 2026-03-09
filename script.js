@@ -102,8 +102,8 @@ function renderTable() {
 
     pageData.forEach((item, index) => {
         const row = document.createElement('tr');
-        if (item.club && item.club.includes('אוסו')) {
-            row.classList.add('highlight-osso');
+        if (item.club && item.club.includes('מרום')) {
+            row.classList.add('highlight-marom');
         }
         row.innerHTML = `
           <td>${index + 1}</td>
@@ -112,6 +112,8 @@ function renderTable() {
           <td>${item.event}</td>
           <td>${item.event_date}</td>
           <td>${item.time}</td>
+          <td>${item.startTime != null ? item.startTime : ''}</td>
+          <td>${item.entryTime != null ? item.entryTime : ''}</td>
           <td>${item.club}</td>
           <td>${item.birthYear}</td>
           <td>${item.gender}</td>
