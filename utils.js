@@ -34,6 +34,8 @@ const filters = [
     "lane",
     "heat",
     "position",
+    "startTime",   // שעת התחלה
+    "entryTime",  // זמן כניסה
 ]
 
 //TODO: Add more event names to the map

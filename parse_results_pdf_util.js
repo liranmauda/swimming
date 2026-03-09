@@ -65,7 +65,9 @@ function parseResults(data_array) {
                 lastName: data_array[i + 6],
                 lane: data_array[i + 7],
                 heat: data_array[i + 8],
-                position: data_array[i + 9]
+                position: data_array[i + 9],
+                startTime: '',   // שעת התחלה - not in PDF
+                entryTime: ''    // זמן כניסה - not in PDF
             });
         }
     }
