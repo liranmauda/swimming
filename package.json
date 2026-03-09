@@ -4,6 +4,7 @@
     "axios": "^1.7.7",
     "cheerio": "^1.0.0",
     "csv-parse": "^5.6.0",
+    "express": "^4.22.1",
     "json2csv": "^6.0.0-alpha.2",
     "minimist": "^1.2.8",
     "moment": "^2.30.1",
