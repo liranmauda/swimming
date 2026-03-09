@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>טעינת קישור – רשימת משחה</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .parse-form { margin: 20px 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .parse-form input[type="url"] { min-width: 280px; padding: 8px 12px; direction: ltr; text-align: left; }
+    .parse-form button { padding: 8px 20px; background: #268aab; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .parse-form button:hover { background: #1e708b; }
+    .parse-form button:disabled { background: #999; cursor: not-allowed; }
+    .parse-status { margin: 10px 0; font-weight: bold; }
+    .parse-status.error { color: #c00; }
+    .parse-status.success { color: #2bc8d9; }
+    #linkTable { margin-top: 16px; }
+    #linkTable th { background-color: #268aab; }
+    .memory-hint { font-size: 0.9em; color: #666; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="header-banner">
+    <img src="logo.png" alt="Logo" class="banner-logo">
+    <div class="banner-title">טעינת קישור – רשימת משחה</div>
+    <img src="logo.png" alt="Logo" class="banner-logo">
+  </div>
+
+  <p><a href="index.html">← חזרה לדף הבית</a></p>
+
+  <div class="parse-form">
+    <label for="linkInput">קישור (URL):</label>
+    <input type="url" id="linkInput" placeholder="https://loglig.com:2053/... או https://www.isr.org.il/...">
+    <button type="button" id="parseBtn">טען ופרסר</button>
+  </div>
+  <div id="parseStatus" class="parse-status" style="display: none;"></div>
+  <p class="memory-hint">הנתונים נשמרים בזיכרון (וכן ב־localStorage) ומוצגים בטבלה למטה.</p>
+
+  <table id="linkTable" style="display: none;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>שם שחיין</th>
+        <th>אגודה</th>
+        <th>משחה</th>
+        <th>קטגוריה</th>
+        <th>מקצה</th>
+        <th>מסלול</th>
+        <th>שעת הזנקה</th>
+        <th>תאריך</th>
+        <th>זמן כניסה</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const API_BASE = ''; // same origin when served with server.js
+    const STORAGE_KEY = 'parsedLinkData';
+
+    let memory = []; // in-memory store
+
+    function loadFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          memory = JSON.parse(raw);
+          renderTable(memory);
+          if (memory.length > 0) {
+            document.getElementById('linkTable').style.display = 'table';
+            showStatus('טענו מהזיכרון ' + memory.length + ' רשומות.', 'success');
+          }
+        }
+      } catch (e) {}
+    }
+
+    function saveToStorage(rows) {
+      memory = rows;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+      } catch (e) {}
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('parseStatus');
+      el.textContent = msg;
+      el.className = 'parse-status ' + (type || '');
+      el.style.display = 'block';
+    }
+
+    function renderTable(rows) {
+      const tbody = document.querySelector('#linkTable tbody');
+      tbody.innerHTML = '';
+      if (!rows || rows.length === 0) return;
+      document.getElementById('linkTable').style.display = 'table';
+      rows.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        if (r.club && r.club.includes('מרום')) tr.classList.add('highlight-marom');
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${escapeHtml(r.swimmerName || '')}</td>
+          <td>${escapeHtml(r.club || '')}</td>
+          <td>${escapeHtml(r.event || '')}</td>
+          <td>${escapeHtml(r.category || '')}</td>
+          <td>${escapeHtml(r.heat || '')}</td>
+          <td>${escapeHtml(r.lane || '')}</td>
+          <td>${escapeHtml(r.startTime || '')}</td>
+          <td>${escapeHtml(r.date || '')}</td>
+          <td>${escapeHtml(r.entryTime || '')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    document.getElementById('parseBtn').addEventListener('click', async () => {
+      const input = document.getElementById('linkInput');
+      const url = (input.value || '').trim();
+      if (!url) {
+        showStatus('הזן קישור.', 'error');
+        return;
+      }
+      const btn = document.getElementById('parseBtn');
+      btn.disabled = true;
+      showStatus('מפרסר...', '');
+      try {
+        const res = await fetch(API_BASE + '/api/parse?url=' + encodeURIComponent(url));
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(err || res.statusText);
+        }
+        const data = await res.json();
+        const rows = data.rows || [];
+        saveToStorage(rows);
+        renderTable(rows);
+        showStatus('נטענו ' + rows.length + ' רשומות ונשמרו בזיכרון.', 'success');
+      } catch (e) {
+        showStatus('שגיאה: ' + (e.message || 'לא ניתן לפרסר את הקישור. וודא שהשרת רץ (node server.js).'), 'error');
+        console.error(e);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadFromStorage();
+  </script>
+</body>
+</html>
