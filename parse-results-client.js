@@ -124,32 +124,39 @@
 
   /**
    * Parse a single loglig results page HTML. Returns { rows: [...] } for the table.
+   * Tries to parse table even when title block is missing.
    */
   function parseResultsPageHtml(html) {
+    if (!html || typeof html !== 'string') return { rows: [] };
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const titleEl = doc.querySelector('.disciplines-title h4');
     const eventInfo = titleEl ? titleEl.textContent.trim() : '';
-    if (!eventInfo) return { rows: [] };
 
     let eventDate = '';
-    try {
-      const firstLine = eventInfo.split('\n')[0] || '';
-      const dashPart = firstLine.split('-')[1];
-      if (dashPart) eventDate = dashPart.trim();
-    } catch (_) {}
+    let gender = '';
+    let eventName = '';
+    if (eventInfo) {
+      try {
+        const firstLine = eventInfo.split('\n')[0] || '';
+        const dashPart = firstLine.split('-')[1];
+        if (dashPart) eventDate = dashPart.trim();
+      } catch (_) {}
+      gender = translateGender(eventInfo);
+      eventName = extractEventName(eventInfo);
+    }
 
-    const gender = translateGender(eventInfo);
-    const eventName = extractEventName(eventInfo);
     const tableRows = parseResultsTable(doc, eventName, eventDate, gender);
     return { rows: tableRows };
   }
 
   /**
    * Fetch URL via CORS proxy and parse. Returns Promise<{ rows: [...] }>.
+   * Supports AllOrigins /get (JSON with .contents) or /raw (raw body).
    */
   function fetchAndParseWithProxy(targetUrl, corsProxyUrl) {
-    const proxy = (corsProxyUrl || 'https://api.allorigins.win/raw?url=').replace(/\/?$/, '');
+    const defaultProxy = 'https://api.allorigins.win/get?url=';
+    const proxy = (corsProxyUrl || defaultProxy).replace(/\/?$/, '');
     const url = proxy + (proxy.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
     return fetch(url)
       .then(function (res) {
@@ -160,40 +167,74 @@
         var data;
         try {
           data = JSON.parse(text);
-          if (data.contents) text = data.contents;
-        } catch (_) {}
+          if (data && data.contents != null) text = data.contents;
+          if (data && data.status && data.status.http_code && data.status.http_code !== 200)
+            throw new Error('Target site returned ' + data.status.http_code);
+        } catch (e) {
+          if (e.message && e.message.indexOf('Target site') !== -1) throw e;
+        }
         return parseResultsPageHtml(text);
       });
   }
 
   /**
    * Resolve isr.org.il page to get iframe (loglig) URL from HTML.
+   * Falls back to regex search for loglig URL if iframe not found.
    */
   function getIframeSrcFromHtml(html) {
+    if (!html || typeof html !== 'string') return null;
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const iframe = doc.querySelector('iframe[src]');
-    return iframe ? iframe.getAttribute('src') : null;
+    var iframe = doc.querySelector('iframe[src], frame[src]');
+    if (iframe) {
+      var src = iframe.getAttribute('src');
+      if (src && src.indexOf('loglig') !== -1) return src;
+    }
+    var list = doc.querySelectorAll('[src]');
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i].getAttribute('src');
+      if (s && s.indexOf('loglig') !== -1) return s;
+    }
+    var decoded = html.replace(/&amp;/g, '&');
+    var patterns = [
+      /https?:\/\/loglig\.com(?::\d+)?\/[^\s"'>\]}\s]+/,
+      /["'](https?:\/\/loglig\.com[^"']+)["']/
+    ];
+    for (var p = 0; p < patterns.length; p++) {
+      var match = decoded.match(patterns[p]);
+      if (match) {
+        var url = (match[1] || match[0]).replace(/[>\s\]}\\]+$/, '');
+        if (url.indexOf('loglig') !== -1) return url;
+      }
+    }
+    return null;
   }
 
   /**
-   * From loglig main page HTML, get all result links (תוצאות).
+   * From loglig main page HTML, get all result links (תוצאות). Deduplicated.
+   * Also collects links that look like result pages (href contains Result, Disciplines, etc.).
    */
   function getResultLinksFromLogligHtml(html, baseUrl) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
+    const seen = {};
     const links = [];
-    doc.querySelectorAll('tr').forEach(function (tr) {
-      tr.querySelectorAll('a').forEach(function (a) {
-        const text = (a.textContent || '').trim();
-        const href = a.getAttribute('href');
-        if (href && text.includes('תוצאות') && !text.includes('תוצאות מקצים')) {
-          try {
-            var full = href.startsWith('http') ? href : new URL(href, baseUrl).href;
-            links.push(full);
-          } catch (_) {}
-        }
-      });
+    function addLink(href, text) {
+      if (!href) return;
+      try {
+        var full = href.startsWith('http') ? href : new URL(href, baseUrl).href;
+        if (full.indexOf('loglig') === -1) return;
+        if (seen[full]) return;
+        seen[full] = true;
+        links.push(full);
+      } catch (_) {}
+    }
+    doc.querySelectorAll('tr a[href], a[href]').forEach(function (a) {
+      const text = (a.textContent || '').trim();
+      const href = a.getAttribute('href');
+      if (text.includes('תוצאות') && !text.includes('תוצאות מקצים')) addLink(href, text);
+      else if (href && (href.indexOf('/Result/') !== -1 || href.indexOf('Disciplines') !== -1 || href.indexOf('LeagueTable') !== -1))
+        addLink(href, text);
     });
     return links;
   }
@@ -203,17 +244,22 @@
    * If it's loglig directly, parse that page. Returns Promise<{ rows: [...] }>.
    */
   function parseUrlWithProxy(targetUrl, corsProxyUrl) {
-    const proxy = (corsProxyUrl || 'https://api.allorigins.win/raw?url=').replace(/\/?$/, '');
+    const defaultProxy = 'https://api.allorigins.win/get?url=';
+    const proxy = (corsProxyUrl || defaultProxy).replace(/\/?$/, '');
     function fetchViaProxy(url) {
       const u = proxy + (proxy.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(url);
       return fetch(u).then(function (r) {
-        if (!r.ok) throw new Error('Fetch failed');
+        if (!r.ok) throw new Error('Proxy failed: ' + r.status);
         return r.text();
       }).then(function (text) {
         try {
           var d = JSON.parse(text);
-          if (d.contents) return d.contents;
-        } catch (_) {}
+          if (d && d.contents != null) return d.contents;
+          if (d && d.status && d.status.http_code && d.status.http_code !== 200)
+            throw new Error('Target returned ' + d.status.http_code);
+        } catch (e) {
+          if (e.message && e.message.indexOf('Target') !== -1) throw e;
+        }
         return text;
       });
     }
@@ -221,10 +267,10 @@
     if (targetUrl.indexOf('isr.org.il') !== -1) {
       return fetchViaProxy(targetUrl).then(function (html) {
         var logligUrl = getIframeSrcFromHtml(html);
-        if (!logligUrl) return { rows: [] };
+        if (!logligUrl) throw new Error('NO_LOGLIG_LINK');
         return fetchViaProxy(logligUrl).then(function (logligHtml) {
           var resultLinks = getResultLinksFromLogligHtml(logligHtml, logligUrl);
-          if (resultLinks.length === 0) return { rows: [] };
+          if (resultLinks.length === 0) throw new Error('NO_RESULT_LINKS');
           var all = [];
           return resultLinks.reduce(function (promise, link) {
             return promise.then(function () {

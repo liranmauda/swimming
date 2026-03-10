@@ -118,7 +118,7 @@
       return div.innerHTML;
     }
 
-    const CORS_PROXY = window.CORS_PROXY_URL || 'https://api.allorigins.win/raw?url=';
+    const CORS_PROXY = window.CORS_PROXY_URL || 'https://api.allorigins.win/get?url=';
 
     document.getElementById('parseBtn').addEventListener('click', async () => {
       const input = document.getElementById('linkInput');
@@ -151,10 +151,18 @@
         const rows = data.rows || [];
         saveToStorage(rows);
         renderTable(rows);
-        showStatus('נטענו ' + rows.length + ' רשומות ונשמרו בזיכרון.', 'success');
+        if (rows.length === 0) {
+          showStatus('לא נמצאו רשומות. נסה קישור ישיר לדף תוצאות ב־loglig (לא דף תחרות isr.org.il), או ייתכן שהאתר חסם את הבקשה.', 'error');
+        } else {
+          showStatus('נטענו ' + rows.length + ' רשומות ונשמרו בזיכרון.', 'success');
+        }
       } catch (e) {
         if (e.message === 'STATIC_HOST' || e.message.includes('GitHub Pages')) {
           showStatus('טעינת קישור אינה זמינה. נסה להריץ מקומית (node server.js) או לבדוק את חיבור האינטרנט.', 'error');
+        } else if (e.message === 'NO_LOGLIG_LINK') {
+          showStatus('לא נמצא קישור ל־loglig בדף התחרות. ייתכן שהאתר נטען ב־JavaScript או שפרוקסי CORS קיבל דף שונה. נסה להריץ מקומית: node server.js', 'error');
+        } else if (e.message === 'NO_RESULT_LINKS') {
+          showStatus('לא נמצאו דפי תוצאות בתחרות. ייתכן שהתחרות טרם התקיימה (תאריך 10.10.2025) או שאין עדיין תוצאות.', 'error');
         } else {
           showStatus('שגיאה: ' + (e.message || 'לא ניתן לפרסר את הקישור.'), 'error');
         }
