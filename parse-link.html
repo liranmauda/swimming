@@ -33,8 +33,9 @@
     <button type="button" id="parseBtn">טען ופרסר</button>
   </div>
   <div id="parseStatus" class="parse-status" style="display: none;"></div>
-  <p class="memory-hint">הנתונים נשמרים בזיכרון (וכן ב־localStorage) ומוצגים בטבלה למטה.</p>
+  <p class="memory-hint">הנתונים נשמרים בזיכרון (וכן ב־localStorage) ומוצגים בטבלה למטה. באתר סטטי (GitHub Pages) הטעינה מתבצעת דרך פרוקסי CORS בדפדפן.</p>
 
+  <script src="parse-results-client.js"></script>
   <table id="linkTable" style="display: none;">
     <thead>
       <tr>
@@ -54,7 +55,7 @@
   </table>
 
   <script>
-    const API_BASE = ''; // same origin when served with server.js
+    const API_BASE = window.PARSE_API_BASE || ''; // set PARSE_API_BASE to your backend URL if deployed separately (e.g. GitHub Pages)
     const STORAGE_KEY = 'parsedLinkData';
 
     let memory = []; // in-memory store
@@ -117,6 +118,8 @@
       return div.innerHTML;
     }
 
+    const CORS_PROXY = window.CORS_PROXY_URL || 'https://api.allorigins.win/raw?url=';
+
     document.getElementById('parseBtn').addEventListener('click', async () => {
       const input = document.getElementById('linkInput');
       const url = (input.value || '').trim();
@@ -128,18 +131,33 @@
       btn.disabled = true;
       showStatus('מפרסר...', '');
       try {
-        const res = await fetch(API_BASE + '/api/parse?url=' + encodeURIComponent(url));
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(err || res.statusText);
+        let data;
+        if (API_BASE) {
+          const apiUrl = (API_BASE + '/api/parse?url=' + encodeURIComponent(url)).replace(/\/\/api/, '/api');
+          const res = await fetch(apiUrl);
+          const text = await res.text();
+          if (!res.ok) {
+            if (text.includes('GitHub Pages') || text.includes('<!DOCTYPE') || text.includes('404')) throw new Error('STATIC_HOST');
+            throw new Error(text.slice(0, 200) || res.statusText);
+          }
+          try {
+            data = JSON.parse(text);
+          } catch (_) {
+            throw new Error('STATIC_HOST');
+          }
+        } else {
+          data = await window.ParseResultsClient.parseUrlWithProxy(url, CORS_PROXY);
         }
-        const data = await res.json();
         const rows = data.rows || [];
         saveToStorage(rows);
         renderTable(rows);
         showStatus('נטענו ' + rows.length + ' רשומות ונשמרו בזיכרון.', 'success');
       } catch (e) {
-        showStatus('שגיאה: ' + (e.message || 'לא ניתן לפרסר את הקישור. וודא שהשרת רץ (node server.js).'), 'error');
+        if (e.message === 'STATIC_HOST' || e.message.includes('GitHub Pages')) {
+          showStatus('טעינת קישור אינה זמינה. נסה להריץ מקומית (node server.js) או לבדוק את חיבור האינטרנט.', 'error');
+        } else {
+          showStatus('שגיאה: ' + (e.message || 'לא ניתן לפרסר את הקישור.'), 'error');
+        }
         console.error(e);
       } finally {
         btn.disabled = false;
