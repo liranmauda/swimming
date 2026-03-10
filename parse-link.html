@@ -157,14 +157,19 @@
           showStatus('נטענו ' + rows.length + ' רשומות ונשמרו בזיכרון.', 'success');
         }
       } catch (e) {
-        if (e.message === 'STATIC_HOST' || e.message.includes('GitHub Pages')) {
+        var msg = e.message || '';
+        if (e.message === 'STATIC_HOST' || msg.includes('GitHub Pages')) {
           showStatus('טעינת קישור אינה זמינה. נסה להריץ מקומית (node server.js) או לבדוק את חיבור האינטרנט.', 'error');
+        } else if (msg === 'Failed to fetch' || msg.toLowerCase().indexOf('failed to fetch') !== -1) {
+          showStatus('שגיאת רשת (Failed to fetch). בדוק חיבור לאינטרנט, נסה לכבות הרחבות חוסמות, או הרץ מקומית: node server.js', 'error');
         } else if (e.message === 'NO_LOGLIG_LINK') {
           showStatus('לא נמצא קישור ל־loglig בדף התחרות. ייתכן שהאתר נטען ב־JavaScript או שפרוקסי CORS קיבל דף שונה. נסה להריץ מקומית: node server.js', 'error');
         } else if (e.message === 'NO_RESULT_LINKS') {
-          showStatus('לא נמצאו דפי תוצאות בתחרות. ייתכן שהתחרות טרם התקיימה (תאריך 10.10.2025) או שאין עדיין תוצאות.', 'error');
+          showStatus('לא נמצאו דפי תוצאות בתחרות. ייתכן שהתחרות טרם התקיימה או שאין עדיין תוצאות.', 'error');
+        } else if (msg.indexOf('All proxies failed') !== -1) {
+          showStatus('כל הפרוקסים נכשלו. הרץ מקומית: node server.js', 'error');
         } else {
-          showStatus('שגיאה: ' + (e.message || 'לא ניתן לפרסר את הקישור.'), 'error');
+          showStatus('שגיאה: ' + (msg || 'לא ניתן לפרסר את הקישור.'), 'error');
         }
         console.error(e);
       } finally {

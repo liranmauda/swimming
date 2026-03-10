@@ -239,55 +239,69 @@
     return links;
   }
 
+  var PROXY_LIST = [
+    'https://api.allorigins.win/get?url=',
+    'https://corsproxy.io/?url='
+  ];
+
   /**
    * Parse one URL. If it's isr.org.il, resolve iframe and result links, then parse each.
    * If it's loglig directly, parse that page. Returns Promise<{ rows: [...] }>.
+   * Tries each proxy in PROXY_LIST until one works (or all fail).
    */
   function parseUrlWithProxy(targetUrl, corsProxyUrl) {
-    const defaultProxy = 'https://api.allorigins.win/get?url=';
-    const proxy = (corsProxyUrl || defaultProxy).replace(/\/?$/, '');
-    function fetchViaProxy(url) {
-      const u = proxy + (proxy.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(url);
-      return fetch(u).then(function (r) {
-        if (!r.ok) throw new Error('Proxy failed: ' + r.status);
-        return r.text();
-      }).then(function (text) {
-        try {
-          var d = JSON.parse(text);
-          if (d && d.contents != null) return d.contents;
-          if (d && d.status && d.status.http_code && d.status.http_code !== 200)
-            throw new Error('Target returned ' + d.status.http_code);
-        } catch (e) {
-          if (e.message && e.message.indexOf('Target') !== -1) throw e;
-        }
-        return text;
-      });
-    }
-
-    if (targetUrl.indexOf('isr.org.il') !== -1) {
-      return fetchViaProxy(targetUrl).then(function (html) {
-        var logligUrl = getIframeSrcFromHtml(html);
-        if (!logligUrl) throw new Error('NO_LOGLIG_LINK');
-        return fetchViaProxy(logligUrl).then(function (logligHtml) {
-          var resultLinks = getResultLinksFromLogligHtml(logligHtml, logligUrl);
-          if (resultLinks.length === 0) throw new Error('NO_RESULT_LINKS');
-          var all = [];
-          return resultLinks.reduce(function (promise, link) {
-            return promise.then(function () {
-              return fetchViaProxy(link).then(function (pageHtml) {
-                var out = parseResultsPageHtml(pageHtml);
-                all = all.concat(out.rows || []);
-                return all;
-              });
-            });
-          }, Promise.resolve()).then(function () {
-            return { rows: all };
-          });
+    var proxyList = corsProxyUrl ? [corsProxyUrl] : PROXY_LIST;
+    var lastErr;
+    function tryProxy(index) {
+      if (index >= proxyList.length) throw lastErr || new Error('All proxies failed');
+      var proxy = proxyList[index].replace(/\/?$/, '');
+      function fetchViaProxy(url) {
+        var u = proxy.indexOf('url=') !== -1 ? (proxy + encodeURIComponent(url)) : (proxy.replace(/\?$/, '') + '?url=' + encodeURIComponent(url));
+        return fetch(u, { mode: 'cors' }).then(function (r) {
+          if (!r.ok) throw new Error('Proxy failed: ' + r.status);
+          return r.text();
+        }).then(function (text) {
+          try {
+            var d = JSON.parse(text);
+            if (d && d.contents != null) return d.contents;
+            if (d && d.status && d.status.http_code && d.status.http_code !== 200)
+              throw new Error('Target returned ' + d.status.http_code);
+          } catch (e) {
+            if (e.message && e.message.indexOf('Target') !== -1) throw e;
+          }
+          return text;
         });
+      }
+      function run() {
+        if (targetUrl.indexOf('isr.org.il') !== -1) {
+          return fetchViaProxy(targetUrl).then(function (html) {
+            var logligUrl = getIframeSrcFromHtml(html);
+            if (!logligUrl) throw new Error('NO_LOGLIG_LINK');
+            return fetchViaProxy(logligUrl).then(function (logligHtml) {
+              var resultLinks = getResultLinksFromLogligHtml(logligHtml, logligUrl);
+              if (resultLinks.length === 0) throw new Error('NO_RESULT_LINKS');
+              var all = [];
+              return resultLinks.reduce(function (promise, link) {
+                return promise.then(function () {
+                  return fetchViaProxy(link).then(function (pageHtml) {
+                    var out = parseResultsPageHtml(pageHtml);
+                    all = all.concat(out.rows || []);
+                    return all;
+                  });
+                });
+              }, Promise.resolve()).then(function () { return { rows: all }; });
+            });
+          });
+        }
+        return fetchAndParseWithProxy(targetUrl, proxy);
+      }
+      return run().catch(function (e) {
+        lastErr = e;
+        if (e.message === 'NO_LOGLIG_LINK' || e.message === 'NO_RESULT_LINKS') throw e;
+        return tryProxy(index + 1);
       });
     }
-
-    return fetchAndParseWithProxy(targetUrl, corsProxyUrl);
+    return tryProxy(0);
   }
 
   global.ParseResultsClient = {
