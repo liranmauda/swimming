@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Swimming parse API – Lambda + API Gateway HTTP API
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 60
+    MemorySize: 512
+
+Resources:
+  ParseApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda.handler
+      CodeUri: .
+      Description: Parse loglig/isr.org.il results URL and return rows
+      Environment:
+        Variables: {}
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /api/parse
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - lambda.js
+
+Outputs:
+  ParseApiUrl:
+    Description: Invoke URL for the parse API (append ?url=...)
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/parse'
+    Export:
+      Name: !Sub '${AWS::StackName}-ParseApiUrl'
+  ParseApiFunctionArn:
+    Description: Parse Lambda function ARN
+    Value: !GetAtt ParseApiFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ParseApiFunctionArn'
