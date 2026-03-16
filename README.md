@@ -62,3 +62,23 @@ EOF
 ```
 
 (החלף את ה־URL בקישור תחרות אמיתי.)
+
+### פריסה אוטומטית עם GitHub Actions
+
+כשמשנים קבצים הקשורים ל־Lambda, ה־workflow מפרס את ה־Stack ל־AWS.
+
+**מתי זה רץ:** על דחיפה ל־`main`/`master` כשמשתנים: `lambda.js`, `template.yaml`, `results_url_util.js`, `utils.js`, `package.json`, או ה־workflow עצמו. אפשר גם להריץ ידנית: Actions → Deploy Lambda to AWS → Run workflow.
+
+**הגדרה (OIDC – מומלץ):**
+
+1. ב־AWS: צור [OIDC Identity Provider](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) ל־GitHub (`https://token.actions.githubusercontent.com`).
+2. צור IAM Role שמאפשר `AssumeRoleWithWebIdentity` מה־OIDC, עם הרשאות לפרוס CloudFormation, Lambda, S3, API Gateway (או השתמש ב־`AdministratorAccess` לניסוי).
+3. ב־GitHub: Settings → Secrets and variables → Actions. הוסף secret:
+   - **`AWS_ROLE_ARN`** – ה־ARN של ה־Role (למשל `arn:aws:iam::123456789012:role/GitHubActionsDeployRole`).
+
+**אופציונלי – משתנים:**
+
+- **`AWS_REGION`** (variable) – אזור (ברירת מחדל: `us-east-1`).
+- **`SAM_STACK_NAME`** (variable) – שם ה־CloudFormation stack (ברירת מחדל: `swimming-parse-api`).
+
+**אם לא משתמשים ב־OIDC:** ב־`.github/workflows/deploy-lambda.yml` החלף את שלב "Configure AWS credentials" לשימוש ב־`aws-access-key-id` ו־`aws-secret-access-key` מה־secrets, והגדר את ה־secrets המתאימים ב־GitHub.
