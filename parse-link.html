@@ -16,13 +16,13 @@
     #linkTable { margin-top: 16px; }
     #linkTable th { background-color: #268aab; }
     .memory-hint { font-size: 0.9em; color: #666; margin-top: 8px; }
-    .origin-warn { background: #fff3cd; border: 1px solid #ffc107; padding: 12px 16px; border-radius: 8px; margin: 16px 0; color: #856404; display: none; }
-    .origin-warn.visible { display: block; }
+    .config-warn { background: #fff3cd; border: 1px solid #ffc107; padding: 12px 16px; border-radius: 8px; margin: 16px 0; color: #856404; display: none; }
+    .config-warn.visible { display: block; }
   </style>
 </head>
 <body>
-  <div id="originWarn" class="origin-warn">
-    <strong>הדף נפתח מקובץ (file://).</strong> טעינת קישור דורשת שרת. הרץ בטרמינל <code>node server.js</code> ואז פתח <a href="http://localhost:8765/parse-link.html" id="originWarnLink">http://localhost:8765/parse-link.html</a>.
+  <div id="configWarn" class="config-warn">
+    <strong>API URL not configured.</strong> Set <code>window.PARSE_API_BASE</code> to your deployed API Gateway base URL (from the SAM stack Outputs), then reload this page.
   </div>
   <div class="header-banner">
     <img src="logo.png" alt="Logo" class="banner-logo">
@@ -59,7 +59,7 @@
   </table>
 
   <script>
-    const API_BASE = window.PARSE_API_BASE || ''; // set PARSE_API_BASE to your backend URL (e.g. Lambda API Gateway)
+    const API_BASE = window.PARSE_API_BASE || ''; // required: deployed API Gateway base URL (Lambda)
     const STORAGE_KEY = 'parsedLinkData';
 
     let memory = []; // in-memory store
@@ -123,6 +123,10 @@
     }
 
     document.getElementById('parseBtn').addEventListener('click', async () => {
+      if (!API_BASE) {
+        showStatus('Set window.PARSE_API_BASE to your API Gateway URL (deployed Lambda).', 'error');
+        return;
+      }
       const input = document.getElementById('linkInput');
       const url = (input.value || '').trim();
       if (!url) {
@@ -137,6 +141,9 @@
         const res = await fetch(apiUrl);
         const text = await res.text();
         if (!res.ok) {
+          if (res.status === 404 && (text.includes('<!DOCTYPE') || text.includes('Error response'))) {
+            throw new Error('API_404');
+          }
           throw new Error(text.slice(0, 200) || res.statusText);
         }
         let data;
@@ -155,8 +162,10 @@
         }
       } catch (e) {
         var msg = e.message || '';
-        if (msg === 'Failed to fetch' || msg.toLowerCase().indexOf('failed to fetch') !== -1) {
-          showStatus('שגיאה: Failed to fetch. פתח את הדף דרך שרת (node server.js) או וודא שה־API זמין.', 'error');
+        if (msg === 'API_404') {
+          showStatus('/api/parse not found. Check PARSE_API_BASE, API deployment, and path.', 'error');
+        } else if (msg === 'Failed to fetch' || msg.toLowerCase().indexOf('failed to fetch') !== -1) {
+          showStatus('Failed to fetch. Check PARSE_API_BASE, CORS, network, and that the API is deployed.', 'error');
         } else if (e.message === 'NO_LOGLIG_LINK') {
           showStatus('לא נמצא קישור ל־loglig בדף התחרות.', 'error');
         } else if (e.message === 'NO_RESULT_LINKS') {
@@ -170,8 +179,8 @@
       }
     });
 
-    if (window.location.protocol === 'file:' || window.location.origin === 'null') {
-      document.getElementById('originWarn').classList.add('visible');
+    if (!API_BASE) {
+      document.getElementById('configWarn').classList.add('visible');
     }
     loadFromStorage();
   </script>

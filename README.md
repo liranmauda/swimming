@@ -4,15 +4,9 @@ Project for parsing and displaying swimming competition results (loglig, isr.org
 
 ## Home
 
-Open `index.html` (via a local server or otherwise) and choose:
+Host the static files (e.g. S3, CloudFront, GitHub Pages) and open `index.html`. Choose:
 - **Competition report** – report with filters and columns
-- **Load link – meet list** – enter a loglig/isr.org.il URL and get rows
-
-## Local run
-
-1. `npm install`
-2. `node server.js` – server on port 8765
-3. Open in browser: http://localhost:8765
+- **Load link – meet list** – enter a loglig/isr.org.il URL and get rows (requires the parse API below)
 
 ## Deploy to AWS Lambda
 
@@ -38,7 +32,7 @@ When you run `sam deploy --guided` you will be prompted for stack name, region, 
 
 ### Using from the frontend
 
-After deploy, if the app is served from another origin (e.g. S3/CloudFront), set the API base URL:
+**Required:** set the API base URL (from stack Outputs) before using **Load link**:
 
 ```html
 <script>
@@ -46,7 +40,7 @@ After deploy, if the app is served from another origin (e.g. S3/CloudFront), set
 </script>
 ```
 
-Or set `PARSE_API_BASE` in `parse-link.html` to the API URL from the stack Outputs.
+Or assign `window.PARSE_API_BASE` at the top of `parse-link.html` (same value as the API Gateway base URL, no trailing slash).
 
 ### Local Lambda test
 
