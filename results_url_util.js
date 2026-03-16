@@ -337,6 +337,7 @@ function should_skip_based_on_criteria(event_info, criteria) {
 
 export {
     get_competition_urls,
+    scrap_main_url_for_main_result_url,
     scrape_main_url_for_results_links,
     fetch_and_parse_results,
     parse_start_list_html,
