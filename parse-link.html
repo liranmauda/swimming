@@ -16,9 +16,14 @@
     #linkTable { margin-top: 16px; }
     #linkTable th { background-color: #268aab; }
     .memory-hint { font-size: 0.9em; color: #666; margin-top: 8px; }
+    .origin-warn { background: #fff3cd; border: 1px solid #ffc107; padding: 12px 16px; border-radius: 8px; margin: 16px 0; color: #856404; display: none; }
+    .origin-warn.visible { display: block; }
   </style>
 </head>
 <body>
+  <div id="originWarn" class="origin-warn">
+    <strong>הדף נפתח מקובץ (file://).</strong> טעינת קישור דורשת שרת. הרץ בטרמינל <code>node server.js</code> ואז פתח <a href="http://localhost:8765/parse-link.html" id="originWarnLink">http://localhost:8765/parse-link.html</a>.
+  </div>
   <div class="header-banner">
     <img src="logo.png" alt="Logo" class="banner-logo">
     <div class="banner-title">טעינת קישור – רשימת משחה</div>
@@ -33,9 +38,8 @@
     <button type="button" id="parseBtn">טען ופרסר</button>
   </div>
   <div id="parseStatus" class="parse-status" style="display: none;"></div>
-  <p class="memory-hint">הנתונים נשמרים בזיכרון (וכן ב־localStorage) ומוצגים בטבלה למטה. באתר סטטי (GitHub Pages) הטעינה מתבצעת דרך פרוקסי CORS בדפדפן.</p>
+  <p class="memory-hint">הנתונים נשמרים בזיכרון (וכן ב־localStorage) ומוצגים בטבלה למטה.</p>
 
-  <script src="parse-results-client.js"></script>
   <table id="linkTable" style="display: none;">
     <thead>
       <tr>
@@ -55,7 +59,7 @@
   </table>
 
   <script>
-    const API_BASE = window.PARSE_API_BASE || ''; // set PARSE_API_BASE to your backend URL if deployed separately (e.g. GitHub Pages)
+    const API_BASE = window.PARSE_API_BASE || ''; // set PARSE_API_BASE to your backend URL (e.g. Lambda API Gateway)
     const STORAGE_KEY = 'parsedLinkData';
 
     let memory = []; // in-memory store
@@ -118,8 +122,6 @@
       return div.innerHTML;
     }
 
-    const CORS_PROXY = window.CORS_PROXY_URL || 'https://api.allorigins.win/get?url=';
-
     document.getElementById('parseBtn').addEventListener('click', async () => {
       const input = document.getElementById('linkInput');
       const url = (input.value || '').trim();
@@ -131,22 +133,17 @@
       btn.disabled = true;
       showStatus('מפרסר...', '');
       try {
+        const apiUrl = (API_BASE + '/api/parse?url=' + encodeURIComponent(url)).replace(/\/\/api/, '/api');
+        const res = await fetch(apiUrl);
+        const text = await res.text();
+        if (!res.ok) {
+          throw new Error(text.slice(0, 200) || res.statusText);
+        }
         let data;
-        if (API_BASE) {
-          const apiUrl = (API_BASE + '/api/parse?url=' + encodeURIComponent(url)).replace(/\/\/api/, '/api');
-          const res = await fetch(apiUrl);
-          const text = await res.text();
-          if (!res.ok) {
-            if (text.includes('GitHub Pages') || text.includes('<!DOCTYPE') || text.includes('404')) throw new Error('STATIC_HOST');
-            throw new Error(text.slice(0, 200) || res.statusText);
-          }
-          try {
-            data = JSON.parse(text);
-          } catch (_) {
-            throw new Error('STATIC_HOST');
-          }
-        } else {
-          data = await window.ParseResultsClient.parseUrlWithProxy(url, CORS_PROXY);
+        try {
+          data = JSON.parse(text);
+        } catch (_) {
+          throw new Error('תשובה לא חוקית מהשרת');
         }
         const rows = data.rows || [];
         saveToStorage(rows);
@@ -158,16 +155,12 @@
         }
       } catch (e) {
         var msg = e.message || '';
-        if (e.message === 'STATIC_HOST' || msg.includes('GitHub Pages')) {
-          showStatus('טעינת קישור אינה זמינה. נסה להריץ מקומית (node server.js) או לבדוק את חיבור האינטרנט.', 'error');
-        } else if (msg === 'Failed to fetch' || msg.toLowerCase().indexOf('failed to fetch') !== -1) {
-          showStatus('שגיאת רשת (Failed to fetch). בדוק חיבור לאינטרנט, נסה לכבות הרחבות חוסמות, או הרץ מקומית: node server.js', 'error');
+        if (msg === 'Failed to fetch' || msg.toLowerCase().indexOf('failed to fetch') !== -1) {
+          showStatus('שגיאה: Failed to fetch. פתח את הדף דרך שרת (node server.js) או וודא שה־API זמין.', 'error');
         } else if (e.message === 'NO_LOGLIG_LINK') {
-          showStatus('לא נמצא קישור ל־loglig בדף התחרות. ייתכן שהאתר נטען ב־JavaScript או שפרוקסי CORS קיבל דף שונה. נסה להריץ מקומית: node server.js', 'error');
+          showStatus('לא נמצא קישור ל־loglig בדף התחרות.', 'error');
         } else if (e.message === 'NO_RESULT_LINKS') {
           showStatus('לא נמצאו דפי תוצאות בתחרות. ייתכן שהתחרות טרם התקיימה או שאין עדיין תוצאות.', 'error');
-        } else if (msg.indexOf('All proxies failed') !== -1) {
-          showStatus('כל הפרוקסים נכשלו. הרץ מקומית: node server.js', 'error');
         } else {
           showStatus('שגיאה: ' + (msg || 'לא ניתן לפרסר את הקישור.'), 'error');
         }
@@ -177,6 +170,9 @@
       }
     });
 
+    if (window.location.protocol === 'file:' || window.location.origin === 'null') {
+      document.getElementById('originWarn').classList.add('visible');
+    }
     loadFromStorage();
   </script>
 </body>
